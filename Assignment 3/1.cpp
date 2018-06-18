@@ -97,6 +97,22 @@ public:
 };
 
 
+double area(double x1, double y1, double x2, double y2, double x3, double y3)
+{
+   return abs((x1*(y2-y3) + x2*(y3-y1)+ x3*(y1-y2))/2.0);
+}
+
+bool is_inside_triangle(Triangle tr, double x, double y)
+{
+    double A = area(tr.p1.x, tr.p1.y, tr.p2.x, tr.p2.y, tr.p3.x, tr.p3.y);
+
+    double A1 = area(x, y, tr.p2.x, tr.p2.y, tr.p3.x, tr.p3.y);
+    double A2 = area(tr.p1.x, tr.p1.y, x, y, tr.p3.x, tr.p3.y);
+    double A3 = area(tr.p1.x, tr.p1.y, tr.p2.x, tr.p2.y, x, y);
+
+    return (A == A1 + A2 + A3);
+}
+
 int main()
 {
     double screen_width,    screen_height;
@@ -126,53 +142,94 @@ int main()
 
         triangles.push_back(triangle);
 
-        triangle.print();
+        //triangle.print();
     }
 
-    Cell** z_buffer = new Cell*[int(screen_height)];
-    for (int i = 0; i < screen_height; i++)
+    cout << "Creating z_buffer" << endl << endl;
+    Cell z_buffer[int(screen_width)][int(screen_height)];
+    for (int i = 0; i < screen_width; i++)
     {
-        z_buffer[i] = new Cell[int(screen_width)];
-        for (int j = 0; j < screen_width; j++)
+        for (int j = 0; j < screen_height; j++)
         {
-            z_buffer[j][i] = Cell(Color(0.0, 0.0, 0.0), z_rear_limit);
+            z_buffer[i][j].set_color(Color(0.0, 0.0, 0.0));
+            z_buffer[i][j].set_z(z_rear_limit);
         }
     }
+    
+
+    // Cell** z_buffer = new Cell*[int(screen_height)];
+    // for (int i = 0; i < screen_height; i++)
+    // {
+    //     z_buffer[i] = new Cell[int(screen_width)];
+    //     for (int j = 0; j < screen_width; j++)
+    //     {
+    //         z_buffer[j][i] = Cell(Color(0.0, 0.0, 0.0), z_rear_limit);
+    //     }
+    // }
 
 
     double dx = (x_right_limit - x_left_limit) / screen_width;
     double dy = (y_top_limit - y_bottom_limit) / screen_height;
 
-    double left_x = x_left_limit + dx / 2.0;
-    double top_y = y_top_limit - dy / 2.0;
+    cout << "scanning" << endl << endl;
 
     for (int t = 0; t < triangles.size(); t++)
     {
-
         Triangle tr = triangles[t];
 
-        // let, the equation of the triangle (plane of the triangle) be
-        // ax + by + cz + d = 0
-        // the coefficients are determined when a triangle is constructed
+        // double tr_max_y = max(max(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
+        // double max_y = min(y_top_limit, tr_max_y + dy / 2.0);
+        // int top_cell = (max_y - y_bottom_limit) / dy;
+        // double top_y = (top_cell)*dx + y_bottom_limit - dy/2.0;
 
-        double x0, x1, x2, y0, y1, y2;
-        if(tr.p1.y >= tr.p2.y && tr.p1.y >= tr.p3.y)
+        // double tr_min_y = min(min(tr.p1.y, tr.p2.y), tr.p3.y); // min_y of triangle
+        // double min_y = max(y_bottom_limit, tr_min_y);
+
+        // int c, r;
+        // double x, y;
+        // for(r = top_cell - 1, y = top_y; y >= min_y; r--, y -= dy)
+        // {
+        //     for(c = 0, x = x_left_limit + dx / 2.0; x <= x_right_limit; c++, x += dx)
+        //     {
+        //         if(is_inside_triangle(tr, x, y) == true)
+        //         {
+        //             double z = -(tr.a*x + tr.b*y + tr.d) / tr.c;
+        //             if(z < z_buffer[c][r].z)
+        //             {
+        //                 z_buffer[c][r].set_color(tr.color);
+        //                 z_buffer[c][r].set_z(z);
+        //             }
+        //         }
+        //     }
+        // }
+
+
+        int c, r;
+        double x, y;
+        for(r = screen_height-1, y = y_top_limit - dy / 2.0; y >= y_bottom_limit; r--, y -= dy)
         {
-            x0 = tr.p1.x; y0 = tr.p1.y; 
-            x1 = tr.p2.x; y1 = tr.p2.y;
-            x2 = tr.p3.x; y2 = tr.p3.y;
-        }
-        else if(tr.p2.y >= tr.p1.y && tr.p2.y >= tr.p3.y)
-        {
-            x0 = tr.p2.x; y0 = tr.p2.y; 
-            x1 = tr.p1.x; y1 = tr.p1.y;
-            x2 = tr.p3.x; y2 = tr.p3.y;
-        }
-        else
-        {
-            x0 = tr.p3.x; y0 = tr.p3.y; 
-            x1 = tr.p1.x; y1 = tr.p1.y;
-            x2 = tr.p2.x; y2 = tr.p2.y;
+            for(c = 0, x = x_left_limit + dx / 2.0; x <= x_right_limit; c++, x += dx)
+            {
+                if(is_inside_triangle(tr, x, y) == true)
+                {
+                    double z = -(tr.a*x + tr.b*y + tr.d) / tr.c;
+                    if(z < z_buffer[c][r].z)
+                    {
+                        z_buffer[c][r].set_color(tr.color);
+                        z_buffer[c][r].set_z(z);
+                    }
+                }
+            }
         }
     }
+    cout << "Creating image..." << endl << endl;
+    bitmap_image image(500,300);
+
+    for(int i=0; i<200; i++){
+        for(int j=0; j<100; j++){
+            image.set_pixel(i,j,255,255,0);
+        }
+    }
+
+    image.save_image("test.bmp");
 }
