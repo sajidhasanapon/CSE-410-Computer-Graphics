@@ -195,12 +195,14 @@ int main()
     config >> x_left_limit;     x_right_limit = - x_left_limit;
     config >> y_bottom_limit;   y_top_limit = - y_bottom_limit;
     config >> z_front_limit >> z_rear_limit;
+    config.close();
 
     dx = (x_right_limit - x_left_limit) / screen_width;
     dy = (y_top_limit - y_bottom_limit) / screen_height;
 
     ifstream input("stage3.txt");
     vector<Triangle> triangles;
+    vector<Triangle>emptyVector;
 
     double x, y, z;
     while(input >> x >> y >> z)
@@ -218,6 +220,7 @@ int main()
 
         //triangle.print();
     }
+    input.close();
 
     cout << "Creating z_buffer" << endl << endl;
     Cell **z_buffer = new Cell*[int(screen_width)];
@@ -274,9 +277,13 @@ int main()
             }
         }
     }
+    vector<Triangle>().swap(triangles);
+    triangles.clear();
+    triangles.shrink_to_fit();
+    
     cout << "Creating image..." << endl << endl;
-    int sw = screen_width;
-    int sh = screen_height;
+    int sw = int(screen_width);
+    int sh = int(screen_height);
     bitmap_image image(sw, sh);
 
     for(int i=0; i<sw; i++){
@@ -284,21 +291,9 @@ int main()
             image.set_pixel(i, sh-j, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b);
         }
     }
+    cout << "Success!" << endl;
 
     image.save_image("1.bmp");
 
-    Point p1 = Point(1,-2,0);
-    Point p2 = Point(3,1,4);
-    Point p3 = Point(0,-1,2);
-
-    Color random_color(rand()%256, rand()%256, rand()%256);
-
-    Triangle triangle(p1, p2, p3, random_color);
-
-    Triangle t = Triangle(p1,p2,p3, random_color);
-
-    Point res = cross(p1-p2, p1-p3);
-
-    cout << "(" << res.x << "," << res.y << "," << res.z << ")" << endl;
-    cout <<  t.a << "," << t.b << "," << t.c << "," << t.d  << endl;
+    return 0;
 }
