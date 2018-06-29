@@ -3,6 +3,17 @@
 
 using namespace std;
 
+
+double screen_width,    screen_height;
+double x_left_limit,    x_right_limit;
+double y_bottom_limit,  y_top_limit;
+double z_rear_limit,    z_front_limit;
+
+double dx, dy;
+
+
+
+
 class Point
 {
 public:
@@ -116,18 +127,77 @@ bool PointInTriangle (Point pt, Triangle tr)
     return ((b1 == b2) && (b2 == b3));
 }
 
+
+int map_y_to_grid_row(double y)
+{
+    double r = (y - y_bottom_limit) / dy + 0.5;
+    return int(r);
+}
+
+double map_row_to_y(int r)
+{
+    return double(r)*dy + y_bottom_limit;
+}
+
+int map_x_to_grid_col(double x)
+{
+    double c = (x - x_left_limit) / dx + 0.5;
+    return int(c);
+}
+
+double map_col_to_x(int c)
+{
+    return double(c)*dx + x_left_limit;
+}
+
+pair<double, double> get_intersetion_x(Triangle tr, double y)
+{
+    double x1 = tr.p1.x;
+    double y1 = tr.p1.y;
+
+    double x2 = tr.p2.x;
+    double y2 = tr.p2.y;
+
+    double x3 = tr.p3.x;
+    double y3 = tr.p3.y;
+
+    double res_x1, res_x2;
+
+    if(y == y1 && y == y2) return make_pair(min(x1, x2), max(x1, x2));
+    if(y == y1 && y == y3) return make_pair(min(x1, x3), max(x1, x3));
+    if(y == y2 && y == y3) return make_pair(min(x2, x3), max(x2, x3));
+
+    if( (y2 - y) * (y3 - y) >= 0) // p2 and p3 on the same side
+    {
+        res_x1 = (x1-x2)/(y1-y2)*(y-y1) + x1; // p1, p2
+        res_x2 = (x1-x3)/(y1-y3)*(y-y1) + x1; // p1, p3
+        return make_pair(min(res_x1, res_x2), max(res_x1, res_x2));
+    }
+    if( (y1 - y) * (y3 - y) >= 0) // p1 and p3 on the same side
+    {
+        res_x1 = (x1-x2)/(y1-y2)*(y-y1) + x1; // p2, p1
+        res_x2 = (x2-x3)/(y2-y3)*(y-y2) + x2; // p2, p3
+        return make_pair(min(res_x1, res_x2), max(res_x1, res_x2));
+    }
+    if( (y1 - y) * (y2 - y) >= 0) // p1 and p2 on the same side
+    {
+        res_x1 = (x1-x3)/(y1-y3)*(y-y1) + x1; // p3, p1
+        res_x2 = (x2-x3)/(y2-y3)*(y-y2) + x2; // p3, p2
+        return make_pair(min(res_x1, res_x2), max(res_x1, res_x2));
+    }
+        
+}
+
 int main()
 {
-    double screen_width,    screen_height;
-    double x_left_limit,    x_right_limit;
-    double y_bottom_limit,  y_top_limit;
-    double z_rear_limit,    z_front_limit;
-
     ifstream config("config.txt");
     config >> screen_width >> screen_height;
     config >> x_left_limit;     x_right_limit = - x_left_limit;
     config >> y_bottom_limit;   y_top_limit = - y_bottom_limit;
     config >> z_front_limit >> z_rear_limit;
+
+    dx = (x_right_limit - x_left_limit) / screen_width;
+    dy = (y_top_limit - y_bottom_limit) / screen_height;
 
     ifstream input("stage3.txt");
     vector<Triangle> triangles;
@@ -139,7 +209,7 @@ int main()
         input >> x >> y >> z; Point p2(x, y, z);
         input >> x >> y >> z; Point p3(x, y, z);
 
-        srand(time(NULL));
+        //srand(time(NULL));
         Color random_color(rand()%256, rand()%256, rand()%256);
 
         Triangle triangle(p1, p2, p3, random_color);
@@ -162,37 +232,44 @@ int main()
     }
     cout << "z_buffer creation complete" << endl << endl;
 
-    double dx = (x_right_limit - x_left_limit) / screen_width;
-    double dy = (y_top_limit - y_bottom_limit) / screen_height;
-
     cout << "scanning" << endl << endl;
-
-
     for (int t = 0; t < triangles.size(); t++)
     {
-        // double tr_max_y = max(max(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
-        // double max_y = min(y_top_limit, tr_max_y + dy / 2.0);
-        // int top_cell = (max_y - y_bottom_limit) / dy;
-        // double top_y = (top_cell)*dx + y_bottom_limit - dy/2.0;
-
-        // double tr_min_y = min(min(tr.p1.y, tr.p2.y), tr.p3.y); // min_y of triangle
-        // double min_y = max(y_bottom_limit, tr_min_y);
         Triangle tr = triangles[t];
+
+        double tr_max_y = max(max(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
+        int r_up = map_y_to_grid_row(tr_max_y);
+        int upper_scanline_row = min(r_up, int(screen_height));
+        double upper_scanline = map_row_to_y(upper_scanline_row);
+
+        double tr_min_y = min(min(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
+        int r_down = map_y_to_grid_row(tr_min_y);
+        int lower_scanline_row = max(r_down, 0);
+        double lower_scanline = map_row_to_y(lower_scanline_row);
 
         int c, r;
         double x, y;
-        for(c = 0, x = x_left_limit + dx / 2.0; x <= x_right_limit; c++, x += dx)
+        for(r = lower_scanline_row, y = lower_scanline + dy / 2.0; y <= upper_scanline; r++, y += dy)  
         {
-            for(r = 0, y = y_bottom_limit + dy / 2.0; y <= y_top_limit; r++, y += dy)  
+            pair<double, double> intersection_x = get_intersetion_x(tr, y);
+            double x1 = intersection_x.first;
+            double x2 = intersection_x.second;
+
+            int c_left = map_x_to_grid_col(x1);
+            int left_scanline_col = max(c_left, 0);
+            double left_scanline = map_col_to_x(left_scanline_col);
+
+            int c_right = map_x_to_grid_col(x2);
+            int right_scanline_col = min(c_right, int(screen_width));
+            double right_scanline = map_col_to_x(right_scanline_col);
+
+            for(c = left_scanline_col, x = left_scanline + dx / 2.0; x <= right_scanline; c++, x += dx)
             {
-                if(PointInTriangle(Point(x,y,0), tr) == true)
+                double z = (tr.d - tr.a*x - tr.b*y ) / tr.c;
+                if(z < z_buffer[c][r].z)
                 {
-                    double z = (tr.d - tr.a*x - tr.b*y ) / tr.c;
-                    if(z < z_buffer[c][r].z)
-                    {
-                        z_buffer[c][r].set_color(tr.color);
-                        z_buffer[c][r].set_z(z);
-                    }
+                    z_buffer[c][r].set_color(tr.color);
+                    z_buffer[c][r].set_z(z);
                 }
             }
         }
@@ -208,7 +285,7 @@ int main()
         }
     }
 
-    image.save_image("test.bmp");
+    image.save_image("1.bmp");
 
     Point p1 = Point(1,-2,0);
     Point p2 = Point(3,1,4);
