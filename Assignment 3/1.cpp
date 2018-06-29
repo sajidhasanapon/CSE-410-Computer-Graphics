@@ -65,7 +65,7 @@ class Triangle
 public:
     Point p1, p2, p3;
     Color color;
-    // let the equation of the plane of the triangle be ax + by + cy + d = 0
+    // let the equation of the plane of the triangle be ax + by + cy = d
     double a, b, c, d;
 
     Triangle(Point p1, Point p2, Point p3, Color color)
@@ -75,15 +75,15 @@ public:
 
         // calculating a, b, c, d
         // using parametric form
-        Point A = p1 - p3;
-        Point B = p2 - p3;
+        Point A = p1 - p2;
+        Point B = p1 - p3;
 
         Point V = cross(A, B);
 
         this->a = V.x;
         this->b = V.y;
         this->c = V.z;
-        this->d = -(this->a*p3.x + this->b*p3.y + this->c*p3.z);
+        this->d = this->a*p1.x + this->b*p1.y + this->c*p1.z;
     }
 
     void print()
@@ -96,21 +96,24 @@ public:
     }
 };
 
-
-double area(double x1, double y1, double x2, double y2, double x3, double y3)
+float sign (Point p1, Point p2, Point p3)
 {
-   return abs((x1*(y2-y3) + x2*(y3-y1)+ x3*(y1-y2))/2.0);
+    return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
 }
 
-bool is_inside_triangle(Triangle tr, double x, double y)
+bool PointInTriangle (Point pt, Triangle tr)
 {
-    double A = area(tr.p1.x, tr.p1.y, tr.p2.x, tr.p2.y, tr.p3.x, tr.p3.y);
+    bool b1, b2, b3;
 
-    double A1 = area(x, y, tr.p2.x, tr.p2.y, tr.p3.x, tr.p3.y);
-    double A2 = area(tr.p1.x, tr.p1.y, x, y, tr.p3.x, tr.p3.y);
-    double A3 = area(tr.p1.x, tr.p1.y, tr.p2.x, tr.p2.y, x, y);
+    Point v1 = tr.p1;
+    Point v2 = tr.p2;
+    Point v3 = tr.p3;
 
-    return (A == A1 + A2 + A3);
+    b1 = sign(pt, v1, v2) < 0.0f;
+    b2 = sign(pt, v2, v3) < 0.0f;
+    b3 = sign(pt, v3, v1) < 0.0f;
+
+    return ((b1 == b2) && (b2 == b3));
 }
 
 int main()
@@ -136,6 +139,7 @@ int main()
         input >> x >> y >> z; Point p2(x, y, z);
         input >> x >> y >> z; Point p3(x, y, z);
 
+        srand(time(NULL));
         Color random_color(rand()%256, rand()%256, rand()%256);
 
         Triangle triangle(p1, p2, p3, random_color);
@@ -146,37 +150,26 @@ int main()
     }
 
     cout << "Creating z_buffer" << endl << endl;
-    Cell z_buffer[int(screen_width)][int(screen_height)];
-    for (int i = 0; i < screen_width; i++)
+    Cell **z_buffer = new Cell*[int(screen_width)];
+    for(int i = 0; i < screen_height; i++)
     {
+        z_buffer[i] = new Cell[int(screen_height)];
         for (int j = 0; j < screen_height; j++)
         {
             z_buffer[i][j].set_color(Color(0.0, 0.0, 0.0));
             z_buffer[i][j].set_z(z_rear_limit);
         }
     }
-    
-
-    // Cell** z_buffer = new Cell*[int(screen_height)];
-    // for (int i = 0; i < screen_height; i++)
-    // {
-    //     z_buffer[i] = new Cell[int(screen_width)];
-    //     for (int j = 0; j < screen_width; j++)
-    //     {
-    //         z_buffer[j][i] = Cell(Color(0.0, 0.0, 0.0), z_rear_limit);
-    //     }
-    // }
-
+    cout << "z_buffer creation complete" << endl << endl;
 
     double dx = (x_right_limit - x_left_limit) / screen_width;
     double dy = (y_top_limit - y_bottom_limit) / screen_height;
 
     cout << "scanning" << endl << endl;
 
+
     for (int t = 0; t < triangles.size(); t++)
     {
-        Triangle tr = triangles[t];
-
         // double tr_max_y = max(max(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
         // double max_y = min(y_top_limit, tr_max_y + dy / 2.0);
         // int top_cell = (max_y - y_bottom_limit) / dy;
@@ -184,35 +177,17 @@ int main()
 
         // double tr_min_y = min(min(tr.p1.y, tr.p2.y), tr.p3.y); // min_y of triangle
         // double min_y = max(y_bottom_limit, tr_min_y);
-
-        // int c, r;
-        // double x, y;
-        // for(r = top_cell - 1, y = top_y; y >= min_y; r--, y -= dy)
-        // {
-        //     for(c = 0, x = x_left_limit + dx / 2.0; x <= x_right_limit; c++, x += dx)
-        //     {
-        //         if(is_inside_triangle(tr, x, y) == true)
-        //         {
-        //             double z = -(tr.a*x + tr.b*y + tr.d) / tr.c;
-        //             if(z < z_buffer[c][r].z)
-        //             {
-        //                 z_buffer[c][r].set_color(tr.color);
-        //                 z_buffer[c][r].set_z(z);
-        //             }
-        //         }
-        //     }
-        // }
-
+        Triangle tr = triangles[t];
 
         int c, r;
         double x, y;
-        for(r = screen_height-1, y = y_top_limit - dy / 2.0; y >= y_bottom_limit; r--, y -= dy)
+        for(c = 0, x = x_left_limit + dx / 2.0; x <= x_right_limit; c++, x += dx)
         {
-            for(c = 0, x = x_left_limit + dx / 2.0; x <= x_right_limit; c++, x += dx)
+            for(r = 0, y = y_bottom_limit + dy / 2.0; y <= y_top_limit; r++, y += dy)  
             {
-                if(is_inside_triangle(tr, x, y) == true)
+                if(PointInTriangle(Point(x,y,0), tr) == true)
                 {
-                    double z = -(tr.a*x + tr.b*y + tr.d) / tr.c;
+                    double z = (tr.d - tr.a*x - tr.b*y ) / tr.c;
                     if(z < z_buffer[c][r].z)
                     {
                         z_buffer[c][r].set_color(tr.color);
@@ -223,13 +198,30 @@ int main()
         }
     }
     cout << "Creating image..." << endl << endl;
-    bitmap_image image(500,300);
+    int sw = screen_width;
+    int sh = screen_height;
+    bitmap_image image(sw, sh);
 
-    for(int i=0; i<200; i++){
-        for(int j=0; j<100; j++){
-            image.set_pixel(i,j,255,255,0);
+    for(int i=0; i<sw; i++){
+        for(int j=0; j<sh; j++){
+            image.set_pixel(i, sh-j, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b);
         }
     }
 
     image.save_image("test.bmp");
+
+    Point p1 = Point(1,-2,0);
+    Point p2 = Point(3,1,4);
+    Point p3 = Point(0,-1,2);
+
+    Color random_color(rand()%256, rand()%256, rand()%256);
+
+    Triangle triangle(p1, p2, p3, random_color);
+
+    Triangle t = Triangle(p1,p2,p3, random_color);
+
+    Point res = cross(p1-p2, p1-p3);
+
+    cout << "(" << res.x << "," << res.y << "," << res.z << ")" << endl;
+    cout <<  t.a << "," << t.b << "," << t.c << "," << t.d  << endl;
 }
