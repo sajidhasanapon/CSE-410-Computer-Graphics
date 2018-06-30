@@ -190,6 +190,8 @@ pair<double, double> get_intersetion_x(Triangle tr, double y)
 
 int main()
 {
+    // freopen("stderr.txt", "w", stderr);
+
     ifstream config("config.txt");
     config >> screen_width >> screen_height;
     config >> x_left_limit;     x_right_limit = - x_left_limit;
@@ -285,10 +287,14 @@ int main()
     int sw = int(screen_width);
     int sh = int(screen_height);
     bitmap_image image(sw, sh);
+    cout << "image constructor called..." << endl;
+    cout << sw << ", " << sh << endl;
 
     for(int i=0; i<sw; i++){
-        for(int j=0; j<sh; j++){
-            image.set_pixel(i, sh-j, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b);
+        for(int j=0; j<sh; j++)
+        {
+            // cout << i << ", " << j << endl;
+            image.set_pixel(i, sh-j-1, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b);
         }
     }
     cout << "Success!" << endl;
