@@ -281,7 +281,7 @@ int main()
     }
     vector<Triangle>().swap(triangles);
     triangles.clear();
-    triangles.shrink_to_fit();
+    //triangles.shrink_to_fit();
     
     cout << "Creating image..." << endl << endl;
     int sw = int(screen_width);
@@ -290,13 +290,25 @@ int main()
     cout << "image constructor called..." << endl;
     cout << sw << ", " << sh << endl;
 
+    ofstream zbfr("z_buffer.txt", ofstream::out);
     for(int i=0; i<sw; i++){
         for(int j=0; j<sh; j++)
         {
             // cout << i << ", " << j << endl;
-            image.set_pixel(i, sh-j-1, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b);
+            image.set_pixel(i, sh-j-1, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b);   
         }
     }
+    for(int i=0; i<sh; i++){
+        for(int j=0; j<sw; j++)
+        {
+            int a = sw-i-1;
+            int b = j;
+            if (z_buffer[b][a].z < z_rear_limit)
+                zbfr << fixed << setprecision(6) << z_buffer[b][a].z << "\t";
+        }
+        zbfr << endl;
+    }
+    zbfr.close();
     cout << "Success!" << endl;
 
     image.save_image("1.bmp");

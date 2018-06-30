@@ -34,7 +34,7 @@ public:
 
 //  The ET is typically built by using a bucket sort with as many buckets as there are scan lines.
 typedef vector<edge_table_tuple> bucket;
-vector<bucket> edge_table;
+bucket* edge_table;
 bucket active_edge_table;
 vector<bool> active_polygon_table;
 
@@ -236,73 +236,85 @@ void add_edges(Triangle tr, int id, double y, int row)
     x1 = tr.p1.x; y1 = tr.p1.y;
     x2 = tr.p2.x; y2 = tr.p2.y;
     if(y1 > y2) {swap(x1, x2), swap(y1, y2);}
-    if(y1 <= y && y < y2)
+    if(y1 <= y && y < y2 && y1 != y2)
     {
-        if(y1 != y2)
-        {
             double m_inv = (x1 - x2) / (y1 - y2);
             double x = m_inv * (y - y1) + x1;
             edge_table_tuple t = edge_table_tuple(x, y1, y2, m_inv, id);
             edge_table[row].push_back(t);
-        }
     }
 
     // p1 and p3
     x1 = tr.p1.x; y1 = tr.p1.y;
     x2 = tr.p3.x; y2 = tr.p3.y;
     if(y1 > y2) {swap(x1, x2), swap(y1, y2);}
-    if(y1 <= y && y < y2)
+    if(y1 <= y && y < y2 && y1 != y2)
     {
-        if(y1 != y2)
-        {
             double m_inv = (x1 - x2) / (y1 - y2);
             double x = m_inv * (y - y1) + x1;
             edge_table_tuple t = edge_table_tuple(x, y1, y2, m_inv, id);
             edge_table[row].push_back(t);
-        }
     }
 
     // p2 and p3
     x1 = tr.p2.x; y1 = tr.p2.y;
     x2 = tr.p3.x; y2 = tr.p3.y;
     if(y1 > y2) {swap(x1, x2), swap(y1, y2);}
-    if(y1 <= y && y < y2)
+    if(y1 <= y && y < y2 && y1 != y2)
     {
-        if(y1 != y2)
-        {
             double m_inv = (x1 - x2) / (y1 - y2);
             double x = m_inv * (y - y1) + x1;
             edge_table_tuple t = edge_table_tuple(x, y1, y2, m_inv, id);
             edge_table[row].push_back(t);
-        }
     }
 
 }
 
-void update_active_edge_table(int i)
+void update_active_edge_table(int row)
 {
-    for (vector<edge_table_tuple>::iterator it = active_edge_table.begin(); it != active_edge_table.end(); it++)
-    {
-        if(map_y_to_grid_row(it->y_max) <= i)
-        {
-            active_edge_table.erase(it);
-        }
-        else
-        {
-            // may create problem. try creating a new object
-            it->x_of_y_min += it->slope_inverse;
-        }
-    }
+    double y = row * dy + dy/2.0 + y_bottom_limit;
+    cout << row << "\t\t\t";
 
-    for (int j = 0; j < edge_table[i].size(); j++)
-    {
-        if(map_y_to_grid_row(edge_table[i][j].y_min) == i)
-        {
-            active_edge_table.push_back(edge_table[i][j]);
-        }
-    }
-
+    active_edge_table = edge_table[row];
     sort(active_edge_table.begin(), active_edge_table.end(), compare_edge_on_x);
+
+    // bucket temp;
+    // for(int i = 0; i < active_edge_table.size(); i++)
+    // {
+    //     edge_table_tuple tpl = active_edge_table[i];
+
+    //     if(tpl.y_max >= y){}
+    //     else
+    //     {
+    //         edge_table_tuple t = edge_table_tuple(tpl.x_of_y_min += tpl.slope_inverse, tpl.y_min, tpl.y_max, tpl.slope_inverse, tpl.triangle_id);
+    //         temp.push_back(t);
+    //     }
+    // }
+    // for(int i  = 0; i < edge_table[row].size(); i++)
+    // {
+    //     edge_table_tuple tpl = edge_table[row][i];
+    //     int r_min = map_y_to_grid_row(tpl.y_min);
+    //     //int r_max = map_y_to_grid_row(tpl.y_max);
+    //     //cout << r_min << "," << r_max << "\t";
+    //     if(r_min == row)
+    //     {
+    //         edge_table_tuple t = edge_table_tuple(tpl.x_of_y_min, tpl.y_min, tpl.y_max, tpl.slope_inverse, tpl.triangle_id);
+    //         temp.push_back(t);
+    //     } 
+    //}
+    //cout << endl;
+    // bucket().swap(active_edge_table);
+    // active_edge_table.clear();
+    // active_edge_table.shrink_to_fit();
+
+    //active_edge_table = temp;
+
+    // bucket().swap(temp);
+    // temp.clear();
+    // temp.shrink_to_fit();
+
+
+    //sort(active_edge_table.begin(), active_edge_table.end(), compare_edge_on_x);
 }
 
 
@@ -318,11 +330,7 @@ int main()
     config >> z_front_limit >> z_rear_limit;
     config.close();
 
-    for (int i = 0; i < int(screen_height); i++)
-    {
-        bucket b;
-        edge_table.push_back(b);
-    }
+    edge_table = new bucket[int(screen_height)];
 
     dx = (x_right_limit - x_left_limit) / screen_width;
     dy = (y_top_limit - y_bottom_limit) / screen_height;
@@ -350,32 +358,30 @@ int main()
     }
     input.close();
 
-    cout << "Creating edge table..." << endl << endl;
+
 
     // creating edge table
-    for (int t_id = 0; t_id < triangles.size(); t_id++)
+    cout << "Creating edge table..." << endl;
+    for (int row = 0; row < int(screen_height); row++)
     {
-        Triangle tr = triangles[t_id];
-
-        double tr_max_y = max(max(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
-        int r_up = map_y_to_grid_row(tr_max_y);
-        int upper_scanline_row = min(r_up, int(screen_height));
-        double upper_scanline = map_row_to_y(upper_scanline_row);
-
-        double tr_min_y = min(min(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
-        int r_down = map_y_to_grid_row(tr_min_y);
-        int lower_scanline_row = max(r_down, 0);
-        double lower_scanline = map_row_to_y(lower_scanline_row);
-
-        int c, r;
-        double x, y;
-        for(r = lower_scanline_row, y = lower_scanline + dy / 2.0; y <= upper_scanline; r++, y += dy)  
+        double y = double(row) * dy + dy / 2.0 + y_bottom_limit;
+        for(int tr_id = 0; tr_id < triangles.size(); tr_id++)
         {
-            add_edges(tr, t_id, y, r);
+            Triangle tr = triangles[tr_id];
+            add_edges(tr, tr_id, y, row);
         }
-        sort(edge_table[t_id].begin(), edge_table[t_id].end(), compare_edge_on_y_min);
+        sort(edge_table[row].begin(), edge_table[row].end(), compare_edge_on_y_min);
     }
     cout << "Complete" << endl;
+
+    for (int row = 0; row < int(screen_height); row++){
+        cout << "row: " << row << "         id:  ";
+        for(int n = 0; n < edge_table[row].size(); n++){
+            cout << edge_table[row][n].triangle_id << " ";
+        }
+        cout << endl;
+    }
+
 
     int sw = int(screen_width);
     int sh = int(screen_height);
@@ -383,11 +389,11 @@ int main()
 
 
     cout << "Scanning..." << endl;
-    for (int y = 0; y < int(screen_height); y++)
+    for (int row = 0; row < int(screen_height); row++)
     {
-        update_active_edge_table(y);
-        cout << "Updated    " << y;
-
+        update_active_edge_table(row);
+        cout << "Updated    " << row << "  " << " size   " << active_edge_table.size() << endl;
+        continue;
         for(int t = 0; t < active_edge_table.size()-1; t++)
         {
             int c_low = map_x_to_grid_col(active_edge_table[t].x_of_y_min);
