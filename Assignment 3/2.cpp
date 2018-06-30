@@ -14,17 +14,29 @@ double dx, dy;
 class edge_table_tuple
 {
 public:
-    double x_of_y_min, y_max, slope_inverse;
-    int triangle_id;    
-};
+    double x_of_y_min, y_min, y_max, slope_inverse;
+    int triangle_id;
 
-bool compare_edge_on_x(edge_table_tuple &a, edge_table_tuple &b)
-{return a.x_of_y_min < b.x_of_y_min;}
+    edge_table_tuple(double x, double y_min, double y_max, double m_inv, int id)
+    {
+        this->x_of_y_min    = x;
+        this->y_min         = y_min;
+        this->y_max         = y_max;
+        this->slope_inverse = m_inv;
+        this->triangle_id   = id;
+    }
+
+    void add_dx(double dx)
+    {
+        this->x_of_y_min += dx;
+    }
+};
 
 //  The ET is typically built by using a bucket sort with as many buckets as there are scan lines.
 typedef vector<edge_table_tuple> bucket;
 vector<bucket> edge_table;
 bucket active_edge_table;
+vector<bool> active_polygon_table;
 
 
 class Point
@@ -140,6 +152,15 @@ bool PointInTriangle (Point pt, Triangle tr)
     return ((b1 == b2) && (b2 == b3));
 }
 
+void swap(double &a, double &b)
+{
+    double x;
+    x = a;
+    a = b;
+    b = x;
+}
+
+
 
 int map_y_to_grid_row(double y)
 {
@@ -201,6 +222,91 @@ pair<double, double> get_intersetion_x(Triangle tr, double y)
         
 }
 
+bool compare_edge_on_x(edge_table_tuple &a, edge_table_tuple &b)
+{return a.x_of_y_min < b.x_of_y_min;}
+
+bool compare_edge_on_y_min(edge_table_tuple &a, edge_table_tuple &b)
+{return a.y_min < b.y_min;}
+
+void add_edges(Triangle tr, int id, double y, int row)
+{
+    double x1, x2, y1, y2;
+
+    // p1 and p2
+    x1 = tr.p1.x; y1 = tr.p1.y;
+    x2 = tr.p2.x; y2 = tr.p2.y;
+    if(y1 > y2) {swap(x1, x2), swap(y1, y2);}
+    if(y1 <= y && y < y2)
+    {
+        if(y1 != y2)
+        {
+            double m_inv = (x1 - x2) / (y1 - y2);
+            double x = m_inv * (y - y1) + x1;
+            edge_table_tuple t = edge_table_tuple(x, y1, y2, m_inv, id);
+            edge_table[row].push_back(t);
+        }
+    }
+
+    // p1 and p3
+    x1 = tr.p1.x; y1 = tr.p1.y;
+    x2 = tr.p3.x; y2 = tr.p3.y;
+    if(y1 > y2) {swap(x1, x2), swap(y1, y2);}
+    if(y1 <= y && y < y2)
+    {
+        if(y1 != y2)
+        {
+            double m_inv = (x1 - x2) / (y1 - y2);
+            double x = m_inv * (y - y1) + x1;
+            edge_table_tuple t = edge_table_tuple(x, y1, y2, m_inv, id);
+            edge_table[row].push_back(t);
+        }
+    }
+
+    // p2 and p3
+    x1 = tr.p2.x; y1 = tr.p2.y;
+    x2 = tr.p3.x; y2 = tr.p3.y;
+    if(y1 > y2) {swap(x1, x2), swap(y1, y2);}
+    if(y1 <= y && y < y2)
+    {
+        if(y1 != y2)
+        {
+            double m_inv = (x1 - x2) / (y1 - y2);
+            double x = m_inv * (y - y1) + x1;
+            edge_table_tuple t = edge_table_tuple(x, y1, y2, m_inv, id);
+            edge_table[row].push_back(t);
+        }
+    }
+
+}
+
+void update_active_edge_table(int i)
+{
+    for (vector<edge_table_tuple>::iterator it = active_edge_table.begin(); it != active_edge_table.end(); it++)
+    {
+        if(map_y_to_grid_row(it->y_max) <= i)
+        {
+            active_edge_table.erase(it);
+        }
+        else
+        {
+            // may create problem. try creating a new object
+            it->x_of_y_min += it->slope_inverse;
+        }
+    }
+
+    for (int j = 0; j < edge_table[i].size(); j++)
+    {
+        if(map_y_to_grid_row(edge_table[i][j].y_min) == i)
+        {
+            active_edge_table.push_back(edge_table[i][j]);
+        }
+    }
+
+    sort(active_edge_table.begin(), active_edge_table.end(), compare_edge_on_x);
+}
+
+
+
 int main()
 {
     freopen("stderr.txt", "w", stderr);
@@ -211,6 +317,12 @@ int main()
     config >> y_bottom_limit;   y_top_limit = - y_bottom_limit;
     config >> z_front_limit >> z_rear_limit;
     config.close();
+
+    for (int i = 0; i < int(screen_height); i++)
+    {
+        bucket b;
+        edge_table.push_back(b);
+    }
 
     dx = (x_right_limit - x_left_limit) / screen_width;
     dy = (y_top_limit - y_bottom_limit) / screen_height;
@@ -232,28 +344,18 @@ int main()
         Triangle triangle(p1, p2, p3, random_color);
 
         triangles.push_back(triangle);
+        active_polygon_table.push_back(false);
 
         //triangle.print();
     }
     input.close();
 
-    cout << "Creating z_buffer" << endl << endl;
-    Cell **z_buffer = new Cell*[int(screen_width)];
-    for(int i = 0; i < screen_height; i++)
-    {
-        z_buffer[i] = new Cell[int(screen_height)];
-        for (int j = 0; j < screen_height; j++)
-        {
-            z_buffer[i][j].set_color(Color(0.0, 0.0, 0.0));
-            z_buffer[i][j].set_z(z_rear_limit);
-        }
-    }
-    cout << "z_buffer creation complete" << endl << endl;
+    cout << "Creating edge table..." << endl << endl;
 
-    cout << "scanning" << endl << endl;
-    for (int t = 0; t < triangles.size(); t++)
+    // creating edge table
+    for (int t_id = 0; t_id < triangles.size(); t_id++)
     {
-        Triangle tr = triangles[t];
+        Triangle tr = triangles[t_id];
 
         double tr_max_y = max(max(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
         int r_up = map_y_to_grid_row(tr_max_y);
@@ -269,50 +371,57 @@ int main()
         double x, y;
         for(r = lower_scanline_row, y = lower_scanline + dy / 2.0; y <= upper_scanline; r++, y += dy)  
         {
-            pair<double, double> intersection_x = get_intersetion_x(tr, y);
-            double x1 = intersection_x.first;
-            double x2 = intersection_x.second;
-
-            int c_left = map_x_to_grid_col(x1);
-            int left_scanline_col = max(c_left, 0);
-            double left_scanline = map_col_to_x(left_scanline_col);
-
-            int c_right = map_x_to_grid_col(x2);
-            int right_scanline_col = min(c_right, int(screen_width));
-            double right_scanline = map_col_to_x(right_scanline_col);
-
-            for(c = left_scanline_col, x = left_scanline + dx / 2.0; x <= right_scanline; c++, x += dx)
-            {
-                double z = (tr.d - tr.a*x - tr.b*y ) / tr.c;
-                if(z < z_buffer[c][r].z)
-                {
-                    z_buffer[c][r].set_color(tr.color);
-                    z_buffer[c][r].set_z(z);
-                }
-            }
+            add_edges(tr, t_id, y, r);
         }
+        sort(edge_table[t_id].begin(), edge_table[t_id].end(), compare_edge_on_y_min);
     }
-    vector<Triangle>().swap(triangles);
-    triangles.clear();
-    triangles.shrink_to_fit();
-    
-    cout << "Creating image..." << endl << endl;
+    cout << "Complete" << endl;
+
     int sw = int(screen_width);
     int sh = int(screen_height);
     bitmap_image image(sw, sh);
-    cout << "image constructor called..." << endl;
-    cout << sw << ", " << sh << endl;
 
-    for(int i=0; i<sw; i++){
-        for(int j=0; j<sh; j++)
+
+    cout << "Scanning..." << endl;
+    for (int y = 0; y < int(screen_height); y++)
+    {
+        update_active_edge_table(y);
+        cout << "Updated    " << y;
+
+        for(int t = 0; t < active_edge_table.size()-1; t++)
         {
-            // cout << i << ", " << j << endl;
-            image.set_pixel(i, sh-j, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b);
+            int c_low = map_x_to_grid_col(active_edge_table[t].x_of_y_min);
+            int c_high = map_x_to_grid_col(active_edge_table[t+1].x_of_y_min);
+            active_polygon_table[active_edge_table[t].triangle_id] = !active_polygon_table[active_edge_table[t].triangle_id];
+            active_polygon_table[active_edge_table[t+1].triangle_id] = !active_polygon_table[active_edge_table[t+1].triangle_id]; 
+
+            for(int x = c_low; x < c_high; x++)
+            {
+                double z = z_rear_limit;
+                Color col = Color(0.0, 0.0, 0.0);
+                //double z = (tr.d - tr.a*x - tr.b*y ) / tr.c;
+                for(int tr=0; tr<active_polygon_table.size(); tr++)
+                {
+                    if(active_polygon_table[tr] == true)
+                    {
+                       double y_coord = map_row_to_y(y) + dy;
+                       double x_coord = map_col_to_x(x) + dx;
+                       double z_t = (triangles[tr].d - triangles[tr].a*x_coord - triangles[tr].b*y_coord ) / triangles[tr].c;
+                       if (z_t < z)
+                       {
+                           z = z_t;
+                           col = triangles[tr].color;
+                       }
+                    }
+                }
+
+                image.set_pixel(x, sh-y-1, col.r, col.g, col.b);
+            }
         }
     }
-    cout << "Success!" << endl;
+    cout << "Complete" << endl;
 
-    image.save_image("1.bmp");
-
+    image.save_image("2.bmp");
+    
     return 0;
 }
