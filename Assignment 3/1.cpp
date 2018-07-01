@@ -3,15 +3,12 @@
 
 using namespace std;
 
-
 double screen_width,    screen_height;
 double x_left_limit,    x_right_limit;
 double y_bottom_limit,  y_top_limit;
 double z_rear_limit,    z_front_limit;
 
 double dx, dy;
-
-
 
 
 class Point
@@ -107,27 +104,6 @@ public:
     }
 };
 
-float sign (Point p1, Point p2, Point p3)
-{
-    return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
-}
-
-bool PointInTriangle (Point pt, Triangle tr)
-{
-    bool b1, b2, b3;
-
-    Point v1 = tr.p1;
-    Point v2 = tr.p2;
-    Point v3 = tr.p3;
-
-    b1 = sign(pt, v1, v2) < 0.0f;
-    b2 = sign(pt, v2, v3) < 0.0f;
-    b3 = sign(pt, v3, v1) < 0.0f;
-
-    return ((b1 == b2) && (b2 == b3));
-}
-
-
 int map_y_to_grid_row(double y)
 {
     double r = (y - y_bottom_limit) / dy + 0.5;
@@ -188,9 +164,15 @@ pair<double, double> get_intersetion_x(Triangle tr, double y)
         
 }
 
-int main()
-{
-    // freopen("stderr.txt", "w", stderr);
+int main(){
+
+
+//////////////////////////////////////////////////////////////////////////////////
+ //                           
+ //                             READ DATA
+ //
+//////////////////////////////////////////////////////////////////////////////////
+    cout << "Reading data...\t";
 
     ifstream config("config.txt");
     config >> screen_width >> screen_height;
@@ -199,8 +181,6 @@ int main()
     config >> z_front_limit >> z_rear_limit;
     config.close();
 
-    dx = (x_right_limit - x_left_limit) / screen_width;
-    dy = (y_top_limit - y_bottom_limit) / screen_height;
 
     ifstream input("stage3.txt");
     vector<Triangle> triangles;
@@ -224,7 +204,13 @@ int main()
     }
     input.close();
 
-    cout << "Creating z_buffer" << endl << endl;
+    cout << "complete" << endl;
+//////////////////////////////////////////////////////////////////////////////////
+ //                           
+ //                      initialize_z_buffer_and_frame_buffer()
+ //
+//////////////////////////////////////////////////////////////////////////////////
+    cout << "Creating z_buffer...\t";
     Cell **z_buffer = new Cell*[int(screen_width)];
     for(int i = 0; i < screen_height; i++)
     {
@@ -235,9 +221,17 @@ int main()
             z_buffer[i][j].set_z(z_rear_limit);
         }
     }
-    cout << "z_buffer creation complete" << endl << endl;
+    cout << "complete" << endl;
+//////////////////////////////////////////////////////////////////////////////////
+//
+//                                  MAIN PROCEDURE
+//
+////////////////////////////////////////////////////////////////////////////////////
+    cout << "Main procedure - iterating...\t";
 
-    cout << "scanning" << endl << endl;
+    dx = (x_right_limit - x_left_limit) / screen_width;
+    dy = (y_top_limit - y_bottom_limit) / screen_height;
+
     for (int t = 0; t < triangles.size(); t++)
     {
         Triangle tr = triangles[t];
@@ -279,25 +273,33 @@ int main()
             }
         }
     }
-    vector<Triangle>().swap(triangles);
-    triangles.clear();
-    //triangles.shrink_to_fit();
-    
-    cout << "Creating image..." << endl << endl;
+    cout << "complete" << endl;
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
+//                                    IMAGE
+//
+///////////////////////////////////////////////////////////////////////////////////////
+    cout << "Creating image...\t";
     int sw = int(screen_width);
     int sh = int(screen_height);
     bitmap_image image(sw, sh);
-    cout << "image constructor called..." << endl;
-    cout << sw << ", " << sh << endl;
 
-    ofstream zbfr("z_buffer.txt", ofstream::out);
     for(int i=0; i<sw; i++){
         for(int j=0; j<sh; j++)
         {
-            // cout << i << ", " << j << endl;
             image.set_pixel(i, sh-j-1, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b);   
         }
     }
+    image.save_image("1.bmp");
+    cout << "complete" << endl;
+///////////////////////////////////////////////////////////////////////////////
+//
+//                  PRINTING Z BUFFER
+//
+///////////////////////////////////////////////////////////////////////////////
+    cout << "Printing z buffer...\t";
+    ofstream zbfr("z_buffer.txt", ofstream::out);
     for(int i=0; i<sh; i++){
         for(int j=0; j<sw; j++)
         {
@@ -309,9 +311,27 @@ int main()
         zbfr << endl;
     }
     zbfr.close();
-    cout << "Success!" << endl;
+    cout << "complete" << endl;
+//////////////////////////////////////////////////////////////////////////////////////////////
+//
+//                                       MEMORY RELEASE
+//
+//////////////////////////////////////////////////////////////////////////////////////////////
 
-    image.save_image("1.bmp");
+    cout << "Releasing memory...\t";
+    vector<Triangle>().swap(triangles);
+    triangles.clear();
+    triangles.shrink_to_fit();
+
+    for(int i = 0; i < screen_height; i++)
+    {
+        delete[] z_buffer[i];
+        delete[] z_buffer;
+    }
+    cout << "complete" << endl;
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+    cout << "Successfully done" << endl;
 
     return 0;
 }
