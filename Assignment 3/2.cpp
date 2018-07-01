@@ -38,7 +38,6 @@ bucket* edge_table;
 bucket active_edge_table;
 vector<bool> active_polygon_table;
 
-
 class Point
 {
 public:
@@ -67,7 +66,7 @@ class Color
 public:
     double r, g, b;
 
-    Color(){}
+    Color(){r = g = b = 0.0;}
 
     Color(double r, double g, double b)
     {this->r = r; this->g = g; this->b = b;}
@@ -159,7 +158,6 @@ void swap(double &a, double &b)
     a = b;
     b = x;
 }
-
 
 
 int map_y_to_grid_row(double y)
@@ -272,49 +270,8 @@ void add_edges(Triangle tr, int id, double y, int row)
 
 void update_active_edge_table(int row)
 {
-    double y = row * dy + dy/2.0 + y_bottom_limit;
-    cout << row << "\t\t\t";
-
     active_edge_table = edge_table[row];
     sort(active_edge_table.begin(), active_edge_table.end(), compare_edge_on_x);
-
-    // bucket temp;
-    // for(int i = 0; i < active_edge_table.size(); i++)
-    // {
-    //     edge_table_tuple tpl = active_edge_table[i];
-
-    //     if(tpl.y_max >= y){}
-    //     else
-    //     {
-    //         edge_table_tuple t = edge_table_tuple(tpl.x_of_y_min += tpl.slope_inverse, tpl.y_min, tpl.y_max, tpl.slope_inverse, tpl.triangle_id);
-    //         temp.push_back(t);
-    //     }
-    // }
-    // for(int i  = 0; i < edge_table[row].size(); i++)
-    // {
-    //     edge_table_tuple tpl = edge_table[row][i];
-    //     int r_min = map_y_to_grid_row(tpl.y_min);
-    //     //int r_max = map_y_to_grid_row(tpl.y_max);
-    //     //cout << r_min << "," << r_max << "\t";
-    //     if(r_min == row)
-    //     {
-    //         edge_table_tuple t = edge_table_tuple(tpl.x_of_y_min, tpl.y_min, tpl.y_max, tpl.slope_inverse, tpl.triangle_id);
-    //         temp.push_back(t);
-    //     } 
-    //}
-    //cout << endl;
-    // bucket().swap(active_edge_table);
-    // active_edge_table.clear();
-    // active_edge_table.shrink_to_fit();
-
-    //active_edge_table = temp;
-
-    // bucket().swap(temp);
-    // temp.clear();
-    // temp.shrink_to_fit();
-
-
-    //sort(active_edge_table.begin(), active_edge_table.end(), compare_edge_on_x);
 }
 
 
@@ -338,6 +295,14 @@ int main()
     ifstream input("stage3.txt");
     vector<Triangle> triangles;
     vector<Triangle>emptyVector;
+
+    Color** grid = new Color*[int(screen_width)];
+    for(int i = 0; i < screen_height; i++)
+    {
+        grid[i] = new Color[int(screen_height)];
+        //for (int j = 0; j < screen_height; j++)
+        //{}
+    }
 
     double x, y, z;
     while(input >> x >> y >> z)
@@ -364,55 +329,55 @@ int main()
     cout << "Creating edge table..." << endl;
     for (int row = 0; row < int(screen_height); row++)
     {
-        double y = double(row) * dy + dy / 2.0 + y_bottom_limit;
+        //double y = double(row) * dy + dy / 2.0 + y_bottom_limit;
+        double y = map_row_to_y(row);
         for(int tr_id = 0; tr_id < triangles.size(); tr_id++)
         {
             Triangle tr = triangles[tr_id];
             add_edges(tr, tr_id, y, row);
         }
-        sort(edge_table[row].begin(), edge_table[row].end(), compare_edge_on_y_min);
+        sort(edge_table[row].begin(), edge_table[row].end(), compare_edge_on_x);
     }
     cout << "Complete" << endl;
 
-    for (int row = 0; row < int(screen_height); row++){
-        cout << "row: " << row << "         id:  ";
-        for(int n = 0; n < edge_table[row].size(); n++){
-            cout << edge_table[row][n].triangle_id << " ";
-        }
-        cout << endl;
-    }
-
-
-    int sw = int(screen_width);
-    int sh = int(screen_height);
-    bitmap_image image(sw, sh);
+    // for (int row = 0; row < int(screen_height); row++){
+    //     cout << "row: " << row << "         id:  ";
+    //     for(int n = 0; n < edge_table[row].size(); n++){
+    //         cout << edge_table[row][n].triangle_id << " ";
+    //     }
+    //     cout << endl;
+    // }
 
 
     cout << "Scanning..." << endl;
     for (int row = 0; row < int(screen_height); row++)
     {
-        update_active_edge_table(row);
-        cout << "Updated    " << row << "  " << " size   " << active_edge_table.size() << endl;
-        continue;
+        double y = row * dy + dy/2.0 + y_bottom_limit;
+        active_edge_table = edge_table[row];
+        if(active_edge_table.size() < 2) continue;
+
         for(int t = 0; t < active_edge_table.size()-1; t++)
         {
-            int c_low = map_x_to_grid_col(active_edge_table[t].x_of_y_min);
-            int c_high = map_x_to_grid_col(active_edge_table[t+1].x_of_y_min);
-            active_polygon_table[active_edge_table[t].triangle_id] = !active_polygon_table[active_edge_table[t].triangle_id];
-            active_polygon_table[active_edge_table[t+1].triangle_id] = !active_polygon_table[active_edge_table[t+1].triangle_id]; 
+            double x_left = active_edge_table[t].x_of_y_min;
+            int c_low = map_x_to_grid_col(x_left);
+            double x_right = active_edge_table[t+1].x_of_y_min;
+            int c_high = map_x_to_grid_col(x_right);
 
-            for(int x = c_low; x < c_high; x++)
+            active_polygon_table[active_edge_table[t].triangle_id] = !active_polygon_table[active_edge_table[t].triangle_id];
+            // active_polygon_table[active_edge_table[t+1].triangle_id] = !active_polygon_table[active_edge_table[t+1].triangle_id]; 
+
+            int c = c_low;
+            //double x = map_col_to_x(c)-dx/2.0;
+            double x = x_left;
+            for(; c < c_high ; c++, x+=dx)
             {
                 double z = z_rear_limit;
                 Color col = Color(0.0, 0.0, 0.0);
-                //double z = (tr.d - tr.a*x - tr.b*y ) / tr.c;
-                for(int tr=0; tr<active_polygon_table.size(); tr++)
+                for(int tr = 0; tr < active_polygon_table.size(); tr++)
                 {
                     if(active_polygon_table[tr] == true)
                     {
-                       double y_coord = map_row_to_y(y) + dy;
-                       double x_coord = map_col_to_x(x) + dx;
-                       double z_t = (triangles[tr].d - triangles[tr].a*x_coord - triangles[tr].b*y_coord ) / triangles[tr].c;
+                       double z_t = (triangles[tr].d - triangles[tr].a*x - triangles[tr].b*y ) / triangles[tr].c;
                        if (z_t < z)
                        {
                            z = z_t;
@@ -420,12 +385,23 @@ int main()
                        }
                     }
                 }
-
-                image.set_pixel(x, sh-y-1, col.r, col.g, col.b);
+                if(0 <= c && c < screen_width)
+                    grid[c][row] = col;
             }
         }
     }
     cout << "Complete" << endl;
+
+    int sw = int(screen_width);
+    int sh = int(screen_height);
+    bitmap_image image(sw, sh);
+
+    for(int i=0; i<sw; i++){
+        for(int j=0; j<sh; j++)
+        {
+            image.set_pixel(i, sh-j-1, grid[i][j].r, grid[i][j].g, grid[i][j].b);   
+        }
+    }
 
     image.save_image("2.bmp");
     
