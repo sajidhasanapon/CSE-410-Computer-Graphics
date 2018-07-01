@@ -388,6 +388,7 @@ int main()
                 if(0 <= c && c < screen_width)
                     grid[c][row] = col;
             }
+            active_polygon_table[active_edge_table[active_edge_table.size()-1].triangle_id] = !active_polygon_table[active_edge_table[active_edge_table.size()-1].triangle_id];
         }
     }
     cout << "Complete" << endl;
