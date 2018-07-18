@@ -106,9 +106,8 @@ class Object
 {
 
   public:
-
     double source_factor = 1.0, refIdx = 1.5;
-    int shine;
+    double shine;
     double color[3];
     double co_efficients[4];
 
@@ -151,7 +150,8 @@ class Object
         double n_dot_i = dot(normal, ray->dir);
         double k = 1.0 - refIdx * refIdx * (1.0 - n_dot_i * n_dot_i);
 
-        if(k < 0.0) return Point3(0.0, 0.0, 0.0);
+        if (k < 0.0)
+            return Point3(0.0, 0.0, 0.0);
 
         Point3 out_dir = ray->dir * refIdx - normal * (refIdx * n_dot_i + sqrt(k));
         return out_dir.normalize();
@@ -198,7 +198,6 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
 
     for (int i = 0; i < lights.size(); i++)
     {
-
         Point3 dir = lights[i] - intersectionPoint;
         double len = sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
         dir = dir.normalize();
@@ -218,12 +217,12 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
 
         for (int j = 0; j < objects.size(); j++)
         {
-
             double tObj = objects[j]->getIntersectionT(&L, true);
 
             if (tObj > 0 || abs(tObj) > len)
             {
-                continue;
+                //continue;
+                break;
             }
 
             flag = true;
@@ -232,20 +231,18 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
 
         if (flag)
         {
-
             double lambert = max(dot(L.dir, normal), 0.0);
             double phong = max(pow(dot(reflection, ray->dir), shine), 0.0);
 
             for (int k = 0; k < 3; k++)
             {
-                current_color[k] += source_factor * lambert * co_efficients[DIFFUSE] * color[k];
-                current_color[k] += source_factor * phong * co_efficients[SPECULAR] * color[k];
+                current_color[k] += (source_factor * lambert * co_efficients[DIFFUSE] * color[k]);
+                current_color[k] += (source_factor * phong * co_efficients[SPECULAR] * color[k]);
             }
         }
 
         if (level < recursion_level)
         {
-
             start = intersectionPoint + reflection * 1.0;
 
             Ray reflectionRay(start, reflection);
@@ -255,7 +252,6 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
 
             if (nearest != -1)
             {
-
                 objects[nearest]->intersect(&reflectionRay, reflected_color, level + 1);
 
                 for (int k = 0; k < 3; k++)
@@ -273,7 +269,6 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
 
             if (nearest != -1)
             {
-
                 objects[nearest]->intersect(&refractionRay, refracted_color, level + 1);
 
                 for (int k = 0; k < 3; k++)
@@ -302,7 +297,6 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
 class Sphere : public Object
 {
   public:
-
     Point3 center;
     double radius;
 

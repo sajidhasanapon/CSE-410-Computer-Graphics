@@ -23,8 +23,7 @@ int imageWidth, imageHeight;
 void loadTestData() {
 
     imageWidth = imageHeight = 768;
-
-    recursion_level = 3;
+    recursion_level = 1;
 
     Point3 center(20,20,10);
     double radius = 10;
@@ -65,7 +64,7 @@ void loadTestData() {
     temp->setColor(0, 1, 0);
     temp->setCoEfficients(0.4,0.2,0.2,0.2);
     temp->setShine(1);
-    objects.push_back(temp);
+    // objects.push_back(temp);
 
 
     double coeff[] = {1, 1, 1, 0, 0, 0, -20, -20, -20, 200};
@@ -79,10 +78,13 @@ void loadTestData() {
 
 
     Point3 light1(-50,50,50);
-    lights.push_back(light1);
+    // lights.push_back(light1);
+
+    Point3 light2(30,30,30);
+    lights.push_back(light2);
 
     temp = new Floor(1000, 20);
-    temp->setCoEfficients(0.4,0.2,0.2,0.2);
+    temp->setCoEfficients(0.6,0.2,0.2,0.2);
     temp->setShine(1);
     objects.push_back(temp);
 
@@ -193,7 +195,7 @@ void loadActualData() {
 
     temp = new Floor(1000, 20);
     temp->setCoEfficients(0.4,0.2,0.2,0.2);
-    temp->setShine(1);
+    temp->setShine(0.5);
     objects.push_back(temp);
 
 
@@ -381,7 +383,7 @@ void animate()
 
 void init() {
 
-    eye = {100, 100, 10};
+    eye = {10, -100, 10};
     l = { 0.0, 1.0, 0.0 };
 	r = { 1.0, 0.0, 0.0 };
 	u = { 0.0, 0.0, 1.0 };
