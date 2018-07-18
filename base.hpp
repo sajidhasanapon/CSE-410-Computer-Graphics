@@ -376,16 +376,18 @@ public:
         glEnd();
     }
 
-    Point3 getNormal(Point3 intersection) {
-        Point3 normal(0,0,1);
-        return normal.normalize();
-    }
+    Point3 getNormal(Point3 intersection) { return Point3(0,0,1); }
 
     double getIntersectionT(Ray* ray, bool debug) {
 
         if(ray->dir.z == 0) return -1;
 
         double t = -(ray->start.z / ray->dir.z);
+        Point3 intersectionPoint = ray->start + ray->dir * t;
+        int pixel_x = (intersectionPoint.x - reference_point.x) / length;
+        int pixel_y = (intersectionPoint.y - reference_point.y) / length;
+        if(pixel_x < 0 || pixel_y < 0 || pixel_x >= n_tiles || pixel_y >= n_tiles) return -1;
+
         return t;
     }
 
@@ -399,8 +401,6 @@ public:
         Point3 intersectionPoint = ray->start + ray->dir * t;
         int pixel_x = (intersectionPoint.x - reference_point.x) / length;
         int pixel_y = (intersectionPoint.y - reference_point.y) / length;
-
-        if(pixel_x < 0 || pixel_y < 0 || pixel_x >= n_tiles || pixel_y >= n_tiles) return -1;
 
         int c = (pixel_x + pixel_y)%2;
         color[0] = color[1] = color[2] = c;
@@ -579,69 +579,55 @@ public:
         return normal.normalize();
     }
 
+    float sign (Point3 p1, Point3 p2, Point3 p3)	{
+        return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);	
+    }
+
     double getIntersectionT(Ray* ray, bool debug) {
         
         Point3 normal = getNormal(Point3(0,0,0));
 
+        double t;
+        bool flag = false;
         double denom = dot(normal, ray->dir);
-        if (abs(denom) > 0.0001f) // your favorite epsilon
+
+        // checking whether the ray intersects with the triangle's plane
+        if (abs(denom) > EPSILON)
         {
-            double t = dot(a - ray->start, normal) / denom;
-            if (t >= 0) return true; // you might want to allow an epsilon here too
+            t = dot(a - ray->start, normal) / denom;
+            if (t > 0) flag = true; // yes
         }
-        return false;
+        
+        if(!flag) return -1; // no
 
-        Point3 e1 = b - a;
-        Point3 e2 = c - a;
+        // checking whether the point of intersection is inside the triangle
+        bool b1, b2, b3;	
+        Point3 intersectionPoint = ray->start + ray->dir * t;
+	
+        b1 = sign(intersectionPoint, a, b) < 0.0;	
+        b2 = sign(intersectionPoint, b, c) < 0.0;	
+        b3 = sign(intersectionPoint, c, a) < 0.0;	
+	
+        if((b1 == b2) && (b2 == b3)) return t; // yes
 
-        Point3 p = cross(ray->dir, e2);
-        double det = dot(e1, p);
-
-        if(det > -EPSILON && det < EPSILON) {
-            return -1;
-        }
-
-        double inv_det = 1.0 / det;
-
-        Point3 T = ray->start - a;
-
-        double u = dot(T, p) * inv_det;
-
-        if(u < 0 || u > 1) {
-            return -1;
-        }
-
-        Point3 q = cross(T, e1);
-
-        double v = dot(ray->dir, q) * inv_det;
-
-        if(v < 0 || u + v  > 1) {
-            return -1;
-        }
-
-        double t = dot(e2, q) * inv_det;
-
-        if(t > EPSILON) { //ray intersection
-            return t;
-        }
-
-        return -1;
+        return -1; // no
     }
 
 
     double intersect(Ray* ray, double current_color[3], int level) {
 
+        ////////////////////////////////////////////////////////////////////////////////
+        if(level == 1){
+            current_color[0] = color[0];
+            current_color[1] = color[1];
+            current_color[2] = color[2];
+
+            return 0;
+        }
+        //////////////////////////////////////////////////////////////////////////////////
+
         double t = getIntersectionT(ray, false);
-
-        if (t <= 0) {
-            return -1;
-        }
-
-        if (level == 0 ) {
-            return t;
-        }
-
-
+        
         for (int i=0; i<3; i++) {
             current_color[i] = color[i] * co_efficients[AMBIENT];
         }

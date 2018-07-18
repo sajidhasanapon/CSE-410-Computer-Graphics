@@ -57,6 +57,16 @@ void loadTestData() {
     temp->setShine(5);
     // objects.push_back(temp);
 
+    Point3 p1(-20.0, 20.0, 20.0);
+    Point3 p2(40.0, 30.0, 10.0);
+    Point3 p3(50.0, 40.0, 0.0);
+
+    temp = new Triangle(p1, p2, p3);
+    temp->setColor(0, 1, 0);
+    temp->setCoEfficients(0.4, 0.2, 0.1, 0.3);
+    temp->setShine(5);
+    objects.push_back(temp);
+
 
     double coeff[] = {1, 1, 1, 0, 0, 0, -20, -20, -20, 200};
     Point3 reff(0, 0, 0);
