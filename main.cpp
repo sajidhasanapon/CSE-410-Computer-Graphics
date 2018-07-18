@@ -1,10 +1,10 @@
 #include <bits/stdc++.h>
 #include <windows.h>
 #include "openGL.hpp"
-
 using namespace std;
 
 #define pi (2*acos(0.0))
+
 int recursion_level;
 
 #include "bitmap_image.hpp"
@@ -57,14 +57,14 @@ void loadTestData() {
     temp->setShine(5);
     // objects.push_back(temp);
 
-    Point3 p1(-20.0, 20.0, 20.0);
-    Point3 p2(40.0, 30.0, 10.0);
-    Point3 p3(50.0, 40.0, 0.0);
+    Point3 p1(-20.0, 60.0, 20.0);
+    Point3 p2(40.0, 90.0, 10.0);
+    Point3 p3(50.0, 70.0, 0.0);
 
     temp = new Triangle(p1, p2, p3);
     temp->setColor(0, 1, 0);
-    temp->setCoEfficients(0.4, 0.2, 0.1, 0.3);
-    temp->setShine(5);
+    temp->setCoEfficients(0.4,0.2,0.2,0.2);
+    temp->setShine(1);
     objects.push_back(temp);
 
 
@@ -228,25 +228,11 @@ void capture() {
         for (int j=0; j<imageHeight; j++) {
 
             Point3 cornerDir = topLeft + r*i*du - u*j*dv;
-            //cout<<cornerDir;
 
             Ray ray(eye, cornerDir - eye);
+            double dummy_color[3] = {0.0, 0.0, 0.0};
 
-            int nearest=-1;
-            double t_min = 9999999;
-            double dummy_color[3] = {0,0,0};
-
-            for (int k=0; k < objects.size(); k++)
-            {
-                double t = objects[k]->getIntersectionT(&ray, false);
-
-                if(t <= 0) continue;
-                else if(t < t_min)
-                {
-                    t_min = t;
-                    nearest = k;
-                }
-            }
+            int nearest = get_nearest(&ray);
 
             if(nearest!=-1) {
                 double t = objects[nearest]->intersect(&ray, dummy_color, 1);
@@ -427,7 +413,6 @@ void freeMemory() {
     vector<Point3>().swap(lights);
     vector<Object*>().swap(objects);
 }
-
 
 int main(int argc, char **argv) {
 

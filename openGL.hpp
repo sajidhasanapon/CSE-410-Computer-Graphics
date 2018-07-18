@@ -36,15 +36,16 @@ void drawLightSource(double x, double y, double z)
 	glTranslatef (x, y, z);
 	glutSolidSphere(1.0, 50, 50);
     glPopMatrix();
-    for(int i = -1; i <=1; i++)
-        for(int j = -1; j <=1; j++)
-            for(int k = -1; k <=1; k++)
-            {
-                glBegin(GL_LINES);
+
+    glBegin(GL_LINES);
+    {
+        for(int i = -1; i <=1; i++)
+            for(int j = -1; j <=1; j++)
+                for(int k = -1; k <=1; k++)
                 {
                     glVertex3f(x, y, z);
                     glVertex3f(x+i*2.0, y+j*2.0, z+k*2.0);
                 }
-                glEnd();
-            }
+    }
+    glEnd();
 }
