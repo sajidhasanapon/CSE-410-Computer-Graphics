@@ -7,8 +7,8 @@ using namespace std;
 
 int recursion_level;
 
-#include "bitmap_image.hpp"
-#include "lib.hxx"
+#include "bitmap_image.h"
+#include "lib.h"
 
 #define WINDOW_WIDTH 700
 #define WINDOW_HEIGHT 700
@@ -373,7 +373,7 @@ int main(int argc, char **argv) {
     glutInitWindowPosition(0, 0);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);	//Depth, Double buffer, RGB color
 
-    glutCreateWindow("Ray Tracer");
+    glutCreateWindow("1305026 - Assignment 4 - Ray Tracer");
 
     init();
 
