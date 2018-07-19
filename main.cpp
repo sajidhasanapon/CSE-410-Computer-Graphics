@@ -206,11 +206,10 @@ void loadActualData() {
 void capture() {
 
     eye.print();
-    Point3** frameBuffer;
-    frameBuffer = new Point3* [imageWidth];
-    Point3 color(0, 0, 0);
+    Color** frameBuffer;
+    frameBuffer = new Color* [imageWidth];
     for (int i=0; i<imageWidth; i++) {
-        frameBuffer[i] = new Point3[imageHeight];
+        frameBuffer[i] = new Color[imageHeight];
     }
 
     double planeDistance = (WINDOW_HEIGHT/2)/tan(VIEW_ANGLE*pi/360);
@@ -231,14 +230,17 @@ void capture() {
             Ray ray(eye, cornerDir - eye);
             double dummy_color[3] = {0.0, 0.0, 0.0};
 
-            int nearest = get_nearest(&ray);
+            pair<double, double> pair = get_nearest(ray);
+            int nearest = pair.first;
+            double t_min = pair.second;
 
             if(nearest!=-1) {
-                double t = objects[nearest]->intersect(&ray, dummy_color, 1);
+                //double t = objects[nearest]->intersect(&ray, dummy_color, 1);
+                objects[nearest]->fill_color(&ray, t_min, dummy_color, 1);
             }
-            frameBuffer[i][j].x = dummy_color[0];
-            frameBuffer[i][j].y = dummy_color[1];
-            frameBuffer[i][j].z = dummy_color[2];
+            frameBuffer[i][j].r = dummy_color[0];
+            frameBuffer[i][j].g = dummy_color[1];
+            frameBuffer[i][j].b = dummy_color[2];
         }
     }
 
@@ -246,9 +248,9 @@ void capture() {
 
     for (int i=0; i<imageWidth; i++) {
         for (int j=0; j<imageHeight; j++) {
-            double r = min(1.0, frameBuffer[i][j].x);
-            double g = min(1.0, frameBuffer[i][j].y);
-            double b = min(1.0, frameBuffer[i][j].z);
+            double r = frameBuffer[i][j].r;
+            double g = frameBuffer[i][j].g;
+            double b = frameBuffer[i][j].b;
             image.set_pixel(i, j, r*255, g*255, b*255);
         }
     }
@@ -382,7 +384,7 @@ void animate()
 
 void init() {
 
-    eye = {0, -200, 10};
+    eye = {0, -150, 40};
     l = { 0.0, 1.0, 0.0 };
 	r = { 1.0, 0.0, 0.0 };
 	u = { 0.0, 0.0, 1.0 };

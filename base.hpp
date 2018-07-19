@@ -5,6 +5,14 @@
 
 extern int recursion_level;
 
+void clip(double &value, double min_val, double max_val)
+{
+    if(value < min_val) value = min_val;
+    if(value > max_val) value = max_val;
+}
+
+typedef struct{double r, g, b;}Color;
+
 class Point3
 {
   public:
@@ -120,10 +128,10 @@ class Object
     Object() {}
 
     virtual void draw() = 0;
-    virtual double getIntersectionT(Ray *r, bool debug) = 0;
+    virtual double getIntersectionT(Ray &ray) = 0;
     virtual Point3 getNormal(Point3 intersection) = 0;
 
-    double intersect(Ray *ray, double current_color[3], int level);
+    void fill_color(Ray *ray, double t, double current_color[3], int level);
 
     void setColor(double r, double g, double b)
     {
@@ -167,14 +175,14 @@ class Object
 vector<Object *> objects;
 vector<Point3> lights;
 
-int get_nearest(Ray *ray)
+pair<double, double> get_nearest(Ray &ray)
 {
     int nearest = -1;
     double t_min = 9999999;
 
     for (int k = 0; k < objects.size(); k++)
     {
-        double tk = objects[k]->getIntersectionT(ray, false);
+        double tk = objects[k]->getIntersectionT(ray);
 
         if (tk <= 0)
         {
@@ -187,48 +195,35 @@ int get_nearest(Ray *ray)
         }
     }
 
-    return nearest;
+    return make_pair(nearest, t_min);
 }
 
-double Object::intersect(Ray *ray, double current_color[3], int level)
+void Object::fill_color(Ray *ray, double t, double current_color[3], int level)
 {
-    double t = getIntersectionT(ray, false);
     Point3 intersectionPoint = ray->start + ray->dir * t;
     Point3 normal = getNormal(intersectionPoint);
     Point3 reflection = get_reflected_ray_direction(ray, normal);
     Point3 refraction = getRefraction(ray, normal);
 
-    double lambert, phong;
+    double ambient = co_efficients[AMBIENT], lambert = 0.0, phong = 0.0;
 
     for (int i = 0; i < lights.size(); i++)
     {
-        // ambientt term
-        for (int k = 0; k < 3; k++)
-        {
-            current_color[k] += color[k] * co_efficients[AMBIENT];
-        }
-
-        Point3 dir = (lights[i] - intersectionPoint);
-        double len = dir.length();
-        dir = dir.normalize();
+        Point3 dir = (lights[i] - intersectionPoint).normalize();
 
         Point3 start = intersectionPoint + dir * EPSILON;
+        // adding epsilon so that the image itself is not detected as a blockade 
         Ray L(start, dir);
-
-        //Point3 E = (intersectionPoint).normalize();
-        //Point3 R = (get_reflected_ray_direction(&L, normal)*-1.0).normalize();
-
-
         Point3 R = (normal * (dot(L.dir, normal) * 2.0) - L.dir).normalize();
-        Point3 V = (intersectionPoint*-1.0).normalize();
+        Point3 V = (intersectionPoint * -1.0).normalize();
 
         bool flag = false;
 
-        for (int j = 0; j < objects.size(); j++)
+        int n_objects = objects.size();
+        for (int j = 0; j < n_objects; j++)
         {
-            double tObj = objects[j]->getIntersectionT(&L, false);
-
-            if (tObj > 0)
+            double t = objects[j]->getIntersectionT(L);
+            if (t > 0)
             {
                 flag = true;
                 break;
@@ -237,18 +232,15 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
 
         if (!flag)
         {
-            lambert = source_factor * co_efficients[DIFFUSE] * max(dot(L.dir, normal), 0.0);
-            phong = co_efficients[SPECULAR] * max(pow(dot(R, V), shine), 0.0);
+            lambert = source_factor * co_efficients[DIFFUSE] * dot(L.dir, normal);
+            phong = co_efficients[SPECULAR] * pow(dot(R, V), shine);
 
-            lambert = min(lambert, 1.0);
-            phong = min(phong, 1.0);
-
-
-            for (int k = 0; k < 3; k++)
-            {
-                current_color[k] += (lambert * color[k]);
-                current_color[k] += (phong * color[k]);
-            }
+            clip(lambert, 0.0, 1.0);
+            clip(phong, 0.0, 1.0);
+        }
+        for (int k = 0; k < 3; k++)
+        {
+            current_color[k] += ((ambient + lambert + phong) * color[k]);
         }
 
         if (level < recursion_level)
@@ -258,11 +250,13 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
             Ray reflectionRay(start, reflection);
             double reflected_color[3] = {0.0, 0.0, 0.0};
 
-            int nearest = get_nearest(&reflectionRay);
+            pair<double, double> pair = get_nearest(&reflectionRay);
+            int nearest = pair.first;
+            double t_min = pair.second;
 
             if (nearest != -1)
             {
-                objects[nearest]->intersect(&reflectionRay, reflected_color, level + 1);
+                objects[nearest]->fill_color(&reflectionRay, t_min, reflected_color, level + 1);
 
                 for (int k = 0; k < 3; k++)
                 {
@@ -275,11 +269,13 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
             Ray refractionRay(start, refraction);
             double refracted_color[3] = {0.0, 0.0, 0.0};
 
-            nearest = get_nearest(&refractionRay);
+            pair = get_nearest(&refractionRay);
+            nearest = pair.first;
+            t_min = pair.second;
 
             if (nearest != -1)
             {
-                objects[nearest]->intersect(&refractionRay, refracted_color, level + 1);
+                objects[nearest]->fill_color(&refractionRay, t_min, refracted_color, level + 1);
 
                 for (int k = 0; k < 3; k++)
                 {
@@ -290,18 +286,9 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
 
         for (int k = 0; k < 3; k++)
         {
-            if (current_color[k] > 1)
-            {
-                current_color[k] = 1;
-            }
-            else if (current_color[k] < 0)
-            {
-                current_color[k] = 0;
-            }
+            clip(current_color[k], 0.0, 1.0);
         }
     }
-
-    return t;
 }
 
 class Sphere : public Object
@@ -325,7 +312,7 @@ class Sphere : public Object
         glPopMatrix();
     }
 
-    double getIntersectionT(Ray *ray, bool debug)
+    double getIntersectionT(Ray &ray)
     {
 
         Point3 c = center;
@@ -342,9 +329,7 @@ class Sphere : public Object
         double t1 = -dot(l, d) + sqrt_disc;
         double t2 = -dot(l, d) - sqrt_disc;
 
-        if (debug == false)
-            return min(t1, t2);
-        return max(t1, t2);
+        return min(t1, t2);
     }
 
     Point3 getNormal(Point3 intersection)
@@ -391,7 +376,7 @@ class Floor : public Object
 
     Point3 getNormal(Point3 intersection) { return Point3(0, 0, 1); }
 
-    double getIntersectionT(Ray *ray, bool debug)
+    double getIntersectionT(Ray &ray)
     {
 
         if (ray->dir.z == 0)
@@ -457,7 +442,7 @@ class Triangle : public Object
         return normal.normalize();
     }
 
-    double getIntersectionT(Ray *ray, bool debug)
+    double getIntersectionT(Ray &ray)
     {
         Point3 normal = getNormal(Point3(0, 0, 0));
 
@@ -491,7 +476,8 @@ class Triangle : public Object
 
         Point3 C, edge1, edge2;
 
-        // edge 0
+        // checking if intersectionPoint is inside the triangle
+
         edge1 = p2 - p1;
         edge2 = intersectionPoint - p1;
         C = cross(edge1, edge2);
@@ -510,7 +496,7 @@ class Triangle : public Object
         if (dot(N, C) < 0)
             return -1;
 
-        return t;
+        return t; // else, yes
     }
 };
 
@@ -554,7 +540,7 @@ class GeneralQuadratic : public Object
         return normal.normalize();
     }
 
-    double getIntersectionT(Ray *ray, bool debug)
+    double getIntersectionT(Ray &ray)
     {
 
         double a = A * ray->dir.x * ray->dir.x + B * ray->dir.y * ray->dir.y + C * ray->dir.z * ray->dir.z;
