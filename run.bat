@@ -1,1 +1,1 @@
-g++ -o main.exe main.cpp -I include -L lib -lglu32 -lopengl32 -lglut32 && main.exe
+g++ -o RayTracer.exe main.cxx -I include -L lib -lglu32 -lopengl32 -lglut32 && RayTracer.exe

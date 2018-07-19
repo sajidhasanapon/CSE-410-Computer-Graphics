@@ -1,6 +1,6 @@
 #include <bits/stdc++.h>
 #include <windows.h>
-#include "openGL.hpp"
+#include "include/glut.h"
 using namespace std;
 
 #define pi (2*acos(0.0))
@@ -8,7 +8,7 @@ using namespace std;
 int recursion_level;
 
 #include "bitmap_image.hpp"
-#include "base.hpp"
+#include "lib.hxx"
 
 #define WINDOW_WIDTH 700
 #define WINDOW_HEIGHT 700
@@ -17,8 +17,10 @@ int recursion_level;
 Point3 eye, l, r, u;
 int imageWidth, imageHeight;
 
-void loadTestData(){}   
-
+void loadTestData(){
+    imageWidth = imageHeight = 768;
+    recursion_level = 3;
+}   
 
 void loadActualData() {
 
@@ -148,7 +150,6 @@ void loadActualData() {
 
 void capture() {
 
-    eye.print();
     Color** frameBuffer;
     frameBuffer = new Color* [imageWidth];
     for (int i=0; i<imageWidth; i++) {
@@ -156,13 +157,14 @@ void capture() {
     }
 
     double planeDistance = (WINDOW_HEIGHT/2)/tan(VIEW_ANGLE*pi/360);
-
     Point3 topLeft = eye + (l * planeDistance - r * (WINDOW_WIDTH/2) + u * (WINDOW_HEIGHT/2));
-    topLeft.print();
+
+    cout << "Eye : "; eye.print();
+    cout << "Plane distance : " << planeDistance << endl;
+    cout << "Topleft : "; topLeft.print();
 
     double du = (WINDOW_WIDTH*1.0) / imageWidth;
     double dv = (WINDOW_HEIGHT*1.0) / imageHeight;
-
 
     for (int i = 0; i < imageWidth; i++) {
         for (int j = 0; j < imageHeight; j++) {
@@ -177,7 +179,6 @@ void capture() {
             double t_min = pair.second;
 
             if(nearest!=-1) {
-                //double t = objects[nearest]->intersect(&ray, dummy_color, 1);
                 objects[nearest]->fill_color(ray, t_min, dummy_color, 1);
             }
             frameBuffer[i][j].r = dummy_color[0];
@@ -197,7 +198,7 @@ void capture() {
         }
     }
 
-    image.save_image("output.bmp");
+    image.save_image("out.bmp");
 
     cout << "saved\n";
     cout << "\a";
@@ -325,7 +326,7 @@ void animate()
 
 void init() {
 
-    eye = {0, -150, 40};
+    eye = {0, -200, 30};
     l = { 0.0, 1.0, 0.0 };
 	r = { 1.0, 0.0, 0.0 };
 	u = { 0.0, 0.0, 1.0 };
