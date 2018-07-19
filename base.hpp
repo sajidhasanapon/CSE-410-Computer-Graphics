@@ -44,6 +44,11 @@ class Point3
         return *this / sqrt(x * x + y * y + z * z);
     }
 
+    double length()
+    {
+        return sqrt(x * x + y * y + z * z);
+    }
+
     friend double dot(Point3 p1, Point3 p2)
     {
         return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
@@ -106,7 +111,8 @@ class Object
 {
 
   public:
-    double source_factor = 1.0, refIdx = 1.5;
+    char type = 'x';
+    double source_factor = 1.0, refIdx = 0.0;
     double shine;
     double color[3];
     double co_efficients[4];
@@ -168,7 +174,7 @@ int get_nearest(Ray *ray)
 
     for (int k = 0; k < objects.size(); k++)
     {
-        double tk = objects[k]->getIntersectionT(ray, true);
+        double tk = objects[k]->getIntersectionT(ray, false);
 
         if (tk <= 0)
         {
@@ -186,67 +192,66 @@ int get_nearest(Ray *ray)
 
 double Object::intersect(Ray *ray, double current_color[3], int level)
 {
+    // for (int k = 0; k < 3; k++)
+    // {
+    //         current_color[k] = color[k];
+    // }
+    // return 0;
+
     double t = getIntersectionT(ray, false);
     Point3 intersectionPoint = ray->start + ray->dir * t;
-
-    for (int i = 0; i < 3; i++)
-    {
-        current_color[i] = color[i] * co_efficients[AMBIENT];
-    }
-
     Point3 normal = getNormal(intersectionPoint);
+    Point3 reflection = get_reflected_ray_direction(ray, normal);
+    Point3 refraction = getRefraction(ray, normal);
+
+    double lambert, phong;
 
     for (int i = 0; i < lights.size(); i++)
     {
-        Point3 dir = lights[i] - intersectionPoint;
-        double len = sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-        dir = dir.normalize();
-
-        if (dot(dir, normal) > 0)
+        // ambientt term
+        for (int k = 0; k < 3; k++)
         {
-            normal = normal * (-1);
+            current_color[k] += color[k] * co_efficients[AMBIENT];
         }
 
-        Point3 reflection = get_reflected_ray_direction(ray, normal);
-        Point3 refraction = getRefraction(ray, normal);
+        Point3 dir = (lights[i] - intersectionPoint);
+        double len = dir.length();
+        dir = dir.normalize();
 
-        Point3 start = intersectionPoint + dir * 1.0;
+        Point3 start = intersectionPoint + dir * EPSILON;
         Ray L(start, dir);
 
         bool flag = false;
 
         for (int j = 0; j < objects.size(); j++)
         {
-            double tObj = objects[j]->getIntersectionT(&L, true);
+            double tObj = objects[j]->getIntersectionT(&L, false);
 
-            if (tObj > 0 || abs(tObj) > len)
+            if (tObj > 0)
             {
-                //continue;
+                flag = true;
                 break;
             }
-
-            flag = true;
-            break;
         }
 
-        if (flag)
+        if (!flag)
         {
-            double lambert = max(dot(L.dir, normal), 0.0);
-            double phong = max(pow(dot(reflection, ray->dir), shine), 0.0);
+            lambert = source_factor * co_efficients[DIFFUSE] * max(dot(L.dir, normal), 0.0);
+            phong = max(pow(dot(reflection, ray->dir), shine), 0.0);
 
             for (int k = 0; k < 3; k++)
             {
-                current_color[k] += (source_factor * lambert * co_efficients[DIFFUSE] * color[k]);
+                current_color[k] += (lambert * color[k]);
                 current_color[k] += (source_factor * phong * co_efficients[SPECULAR] * color[k]);
             }
         }
 
         if (level < recursion_level)
         {
-            start = intersectionPoint + reflection * 1.0;
+            Point3 start = intersectionPoint + reflection * EPSILON;
 
             Ray reflectionRay(start, reflection);
-            double reflected_color[3];
+            double reflected_color[3] = {0.0, 0.0, 0.0};
 
             int nearest = get_nearest(&reflectionRay);
 
@@ -260,10 +265,10 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
                 }
             }
 
-            start = intersectionPoint + refraction * 1.0;
+            start = intersectionPoint + refraction * EPSILON;
 
             Ray refractionRay(start, refraction);
-            double refracted_color[3];
+            double refracted_color[3] = {0.0, 0.0, 0.0};
 
             nearest = get_nearest(&refractionRay);
 
@@ -332,7 +337,9 @@ class Sphere : public Object
         double t1 = -dot(l, d) + sqrt_disc;
         double t2 = -dot(l, d) - sqrt_disc;
 
-        return min(t1, t2);
+        if (debug == false)
+            return min(t1, t2);
+        return max(t1, t2);
     }
 
     Point3 getNormal(Point3 intersection)
@@ -403,15 +410,28 @@ class Floor : public Object
 
 class Triangle : public Object
 {
-
   public:
-    Point3 a, b, c;
+    Point3 p1, p2, p3;
+    // let the equation of the plane of the triangle be ax + by + cz = d
+    double a, b, c, d;
 
-    Triangle(Point3 a, Point3 b, Point3 c)
+    Triangle(Point3 p1, Point3 p2, Point3 p3)
     {
-        this->a = a;
-        this->b = b;
-        this->c = c;
+        this->p1 = p1;
+        this->p2 = p2;
+        this->p3 = p3;
+
+        // calculating a, b, c, d
+        // using parametric form
+        Point3 AB = p2 - p1;
+        Point3 AC = p3 - p1;
+
+        Point3 V = cross(AB, AC);
+
+        this->a = V.x;
+        this->b = V.y;
+        this->c = V.z;
+        this->d = this->a * p1.x + this->b * p1.y + this->c * p1.z;
     }
 
     void draw()
@@ -419,45 +439,40 @@ class Triangle : public Object
         glColor3f(color[0], color[1], color[2]);
         glBegin(GL_TRIANGLES);
         {
-            glVertex3f(a.x, a.y, a.z);
-            glVertex3f(b.x, b.y, b.z);
-            glVertex3f(c.x, c.y, c.z);
+            glVertex3f(p1.x, p1.y, p1.z);
+            glVertex3f(p2.x, p2.y, p2.z);
+            glVertex3f(p3.x, p3.y, p3.z);
         }
         glEnd();
     }
 
     Point3 getNormal(Point3 intersection)
     {
-
-        Point3 u = b - a;
-        Point3 v = c - a;
-
-        Point3 normal = cross(u, v);
-
+        Point3 normal = Point3(a, b, c);
         return normal.normalize();
-    }
-
-    float sign(Point3 p1, Point3 p2, Point3 p3)
-    {
-        return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
     }
 
     double getIntersectionT(Ray *ray, bool debug)
     {
-
         Point3 normal = getNormal(Point3(0, 0, 0));
 
         double t;
         bool flag = false;
         double denom = dot(normal, ray->dir);
 
-        // checking whether the ray intersects with the triangle's plane
-        if (abs(denom) > EPSILON)
+        if (denom < 0.0)
         {
-            t = dot(a - ray->start, normal) / denom;
-            if (t > 0)
-                flag = true; // yes
+            normal = normal * -1.0;
+            denom = dot(normal, ray->dir);
         }
+
+        // checking whether the ray intersects with the triangle's plane
+        if (abs(denom) < EPSILON)
+            return -1;
+
+        t = (dot(normal, p1 - ray->start)) / denom;
+        if (t >= 0)
+            flag = true; // yes, intersects the plane
 
         if (!flag)
             return -1; // no
@@ -466,14 +481,31 @@ class Triangle : public Object
         bool b1, b2, b3;
         Point3 intersectionPoint = ray->start + ray->dir * t;
 
-        b1 = sign(intersectionPoint, a, b) < 0.0;
-        b2 = sign(intersectionPoint, b, c) < 0.0;
-        b3 = sign(intersectionPoint, c, a) < 0.0;
+        Point3 N = cross(p2 - p1, p3 - p1);
+        double area2 = N.length();
 
-        if ((b1 == b2) && (b2 == b3))
-            return t; // yes
+        Point3 C, edge1, edge2;
 
-        return -1; // no
+        // edge 0
+        edge1 = p2 - p1;
+        edge2 = intersectionPoint - p1;
+        C = cross(edge1, edge2);
+        if (dot(N, C) < 0)
+            return -1;
+
+        edge1 = p3 - p2;
+        edge2 = intersectionPoint - p2;
+        C = cross(edge1, edge2);
+        if (dot(N, C) < 0)
+            return -1;
+
+        edge1 = p1 - p3;
+        edge2 = intersectionPoint - p3;
+        C = cross(edge1, edge2);
+        if (dot(N, C) < 0)
+            return -1;
+
+        return t;
     }
 };
 

@@ -30,12 +30,6 @@ void loadTestData() {
 
     Object *temp;
 
-    temp = new Sphere(center, radius);
-    temp->setColor(1,0,0);
-    temp->setCoEfficients(0.4,0.2,0.2,0.2);
-    temp->setShine(1);
-    objects.push_back(temp);
-
     center = {0,15,15};
     radius = 5;
 
@@ -56,15 +50,26 @@ void loadTestData() {
     temp->setShine(5);
     // objects.push_back(temp);
 
-    Point3 p1(-20.0, 60.0, 20.0);
-    Point3 p2(40.0, 90.0, 10.0);
-    Point3 p3(50.0, 70.0, 0.0);
+    // Point3 p1(-30.0, 50.0, 80.0);
+    // Point3 p2(-30.0, 120.0, 0.0);
+    // Point3 p3(-30.0, -20.0, 0.0);
+
+    Point3 p1(30.0, 60.0, 0.0);
+    Point3 p2(50.0, 30.0, 0.0);
+    Point3 p3(50.0, 45.0, 50.0);
+    
 
     temp = new Triangle(p1, p2, p3);
     temp->setColor(0, 1, 0);
     temp->setCoEfficients(0.4,0.2,0.2,0.2);
     temp->setShine(1);
-    // objects.push_back(temp);
+    objects.push_back(temp);
+
+    temp = new Sphere(center, radius);
+    temp->setColor(1,0,0);
+    temp->setCoEfficients(0.4,0.2,0.2,0.2);
+    temp->setShine(1);
+    //objects.push_back(temp);
 
 
     double coeff[] = {1, 1, 1, 0, 0, 0, -20, -20, -20, 200};
@@ -74,17 +79,14 @@ void loadTestData() {
     temp->setColor(1, 0, 1);
     temp->setCoEfficients(0.4, 0.2, 0.1, 0.3);
     temp->setShine(3);
-    //objects.push_back(temp);
+    objects.push_back(temp);
 
 
     Point3 light1(-50,50,50);
-    // lights.push_back(light1);
-
-    Point3 light2(30,30,30);
-    lights.push_back(light2);
+    lights.push_back(light1);
 
     temp = new Floor(1000, 20);
-    temp->setCoEfficients(0.6,0.2,0.2,0.2);
+    temp->setCoEfficients(0.4,0.2,0.2,0.2);
     temp->setShine(1);
     objects.push_back(temp);
 
@@ -194,8 +196,8 @@ void loadActualData() {
 
 
     temp = new Floor(1000, 20);
-    temp->setCoEfficients(0.4,0.2,0.2,0.2);
-    temp->setShine(0.5);
+    temp->setCoEfficients(0.2,0.4,0.2,0.2);
+    temp->setShine(1.0);
     objects.push_back(temp);
 
 
@@ -209,12 +211,7 @@ void capture() {
     Point3 color(0, 0, 0);
     for (int i=0; i<imageWidth; i++) {
         frameBuffer[i] = new Point3[imageHeight];
-        for (int j=0; j<imageHeight; j++) {
-            frameBuffer[i][j] = color;
-        }
     }
-
-
 
     double planeDistance = (WINDOW_HEIGHT/2)/tan(VIEW_ANGLE*pi/360);
 
@@ -238,27 +235,29 @@ void capture() {
 
             if(nearest!=-1) {
                 double t = objects[nearest]->intersect(&ray, dummy_color, 1);
-                frameBuffer[i][j].x = dummy_color[0];
-                frameBuffer[i][j].y = dummy_color[1];
-                frameBuffer[i][j].z = dummy_color[2];
             }
+            frameBuffer[i][j].x = dummy_color[0];
+            frameBuffer[i][j].y = dummy_color[1];
+            frameBuffer[i][j].z = dummy_color[2];
         }
     }
-
-
 
     bitmap_image image(imageWidth, imageHeight);
 
     for (int i=0; i<imageWidth; i++) {
         for (int j=0; j<imageHeight; j++) {
-            image.set_pixel(i, j, frameBuffer[i][j].x*255, frameBuffer[i][j].y*255, frameBuffer[i][j].z*255);
+            double r = min(1.0, frameBuffer[i][j].x);
+            double g = min(1.0, frameBuffer[i][j].y);
+            double b = min(1.0, frameBuffer[i][j].z);
+            image.set_pixel(i, j, r*255, g*255, b*255);
         }
     }
 
     image.save_image("output.bmp");
 
     cout<<"saved\n";
-    exit(0);
+    cout << "\a";
+    // exit(0);
 }
 
 void keyboardListener(unsigned char key, int x, int y)
@@ -383,7 +382,7 @@ void animate()
 
 void init() {
 
-    eye = {10, -100, 10};
+    eye = {0, -200, 10};
     l = { 0.0, 1.0, 0.0 };
 	r = { 1.0, 0.0, 0.0 };
 	u = { 0.0, 0.0, 1.0 };
@@ -419,8 +418,8 @@ void freeMemory() {
 int main(int argc, char **argv) {
 
     //freopen("out.txt", "w", stdout);
-    loadTestData();
-    // loadActualData();
+    //loadTestData();
+    loadActualData();
 
     glutInit(&argc,argv);
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
