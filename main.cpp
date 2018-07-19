@@ -10,195 +10,138 @@ int recursion_level;
 #include "bitmap_image.hpp"
 #include "base.hpp"
 
-#define WINDOW_WIDTH 500
-#define WINDOW_HEIGHT 500
-#define VIEW_ANGLE 80
+#define WINDOW_WIDTH 700
+#define WINDOW_HEIGHT 700
+#define VIEW_ANGLE 50
 
 Point3 eye, l, r, u;
 int imageWidth, imageHeight;
 
-
-
-
-void loadTestData() {
-
-    imageWidth = imageHeight = 768;
-    recursion_level = 1;
-
-    Point3 center(20,20,10);
-    double radius = 10;
-
-    Object *temp;
-
-    center = {0,15,15};
-    radius = 5;
-
-    temp = new Sphere(center, radius);
-    temp->setColor(1,0,1);
-    temp->setCoEfficients(0.4,0.2,0.2,0.2);
-    temp->setShine(1);
-    // objects.push_back(temp);
-
-
-    Point3 a(20.0, 20.0, 20.0);
-    Point3 b(40.0, 30.0, 10.0);
-    Point3 c(50.0, 40.0, 0.0);
-
-    temp = new Triangle(a, b, c);
-    temp->setColor(0, 1, 0);
-    temp->setCoEfficients(0.4, 0.2, 0.1, 0.3);
-    temp->setShine(5);
-    // objects.push_back(temp);
-
-    // Point3 p1(-30.0, 50.0, 80.0);
-    // Point3 p2(-30.0, 120.0, 0.0);
-    // Point3 p3(-30.0, -20.0, 0.0);
-
-    Point3 p1(30.0, 60.0, 0.0);
-    Point3 p2(50.0, 30.0, 0.0);
-    Point3 p3(50.0, 45.0, 50.0);
-    
-
-    temp = new Triangle(p1, p2, p3);
-    temp->setColor(0, 1, 0);
-    temp->setCoEfficients(0.4,0.2,0.2,0.2);
-    temp->setShine(1);
-    objects.push_back(temp);
-
-    temp = new Sphere(center, radius);
-    temp->setColor(1,0,0);
-    temp->setCoEfficients(0.4,0.2,0.2,0.2);
-    temp->setShine(1);
-    //objects.push_back(temp);
-
-
-    double coeff[] = {1, 1, 1, 0, 0, 0, -20, -20, -20, 200};
-    Point3 reff(0, 0, 0);
-
-    temp = new GeneralQuadratic(coeff, reff, 0, 0, 5);
-    temp->setColor(1, 0, 1);
-    temp->setCoEfficients(0.4, 0.2, 0.1, 0.3);
-    temp->setShine(3);
-    objects.push_back(temp);
-
-
-    Point3 light1(-50,50,50);
-    lights.push_back(light1);
-
-    temp = new Floor(1000, 20);
-    temp->setCoEfficients(0.4,0.2,0.2,0.2);
-    temp->setShine(1);
-    objects.push_back(temp);
-
-}
+void loadTestData(){}   
 
 
 void loadActualData() {
 
+    int n_objects, n_lights;
+    string command;
+    Object *obj;
+
     freopen("scene.txt", "r", stdin);
 
-    cin>>recursion_level;
-    cin>>imageWidth;
+    cin >> recursion_level >> imageWidth >> n_objects;
     imageHeight = imageWidth;
 
-    int numOfObjects;
-    cin>>numOfObjects;
 
-    string command;
-    double a, b, c, radius;
-
-    Object *temp;
-
-    for (int i=0; i<numOfObjects; i++) {
+    for (int i = 0; i < n_objects; i++)
+    {
         cin>>command;
 
         if (command == "sphere") {
 
-            cin>>a>>b>>c;
-            Point3 center(a, b, c);
+            double x, y, z; // center
+            double radius; // radius
+            double red, green, blue;
+            double ambient, diffuse, specular, reflection;
+            double shine; 
 
-            cin>>radius;
-            temp = new Sphere(center, radius);
+            Point3 center;
 
-            cin>>a>>b>>c;
-            temp->setColor(a, b, c);
+            cin >> x >> y >> z >> radius;
+            center = Point3(x, y, z);
+            obj = new Sphere(center, radius);
 
-            cin>>a>>b>>c>>radius;
-            temp->setCoEfficients(a, b, c, radius);
+            cin >> red >> green >> blue;
+            obj->setColor(red, green, blue);
 
-            cin>>a;
-            temp->setShine(a);
+            cin >> ambient >> diffuse >> specular >> reflection;
+            obj->set_lighting_coefficients(ambient, diffuse, specular, reflection);
 
-            objects.push_back(temp);
+            cin >> shine;
+            obj->setShine(shine);
+
+            objects.push_back(obj);
         }
 
         else if (command == "triangle") {
 
-            cin>>a>>b>>c;
-            Point3 A(a, b, c);
+            double x, y, z; // a vertex
+            double red, green, blue;
+            double ambient, diffuse, specular, reflection;
+            double shine;
 
-            cin>>a>>b>>c;
-            Point3 B(a, b, c);
+            Point3 A, B, C;
 
-            cin>>a>>b>>c;
-            Point3 C(a, b, c);
+            cin >> x >> y >> z;
+            A = Point3(x, y, z);
 
-            temp = new Triangle(A, B, C);
+            cin >> x >> y >> z;
+            B = Point3(x, y, z);
 
-            cin>>a>>b>>c;
-            temp->setColor(a, b, c);
+            cin >> x >> y >> z;
+            C = Point3(x, y, z);
 
-            cin>>a>>b>>c>>radius;
-            temp->setCoEfficients(a, b, c, radius);
+            obj = new Triangle(A, B, C);
 
-            cin>>a;
-            temp->setShine(a);
+            cin >> red >> green >> blue;
+            obj->setColor(red, green, blue);
 
-            objects.push_back(temp);
+            cin >> ambient >> diffuse >> specular >> reflection;
+            obj->set_lighting_coefficients(ambient, diffuse, specular, reflection);
+
+            cin >> shine;
+            obj->setShine(shine);
+
+            objects.push_back(obj);
 
         }
 
         else if (command == "general") {
 
             double coeff[10];
-            for (int c=0; c<10; c++) {
+            double x, y, z;
+            double length, width, height;
+            double red, green, blue;
+            double ambient, diffuse, specular, reflection;
+            double shine;
+
+            Point3 base_point;
+
+            for (int c = 0; c < 10; c++) {
                 cin>>coeff[c];
             }
 
-            cin>>a>>b>>c;
-            Point3 reff(a, b, c);
+            cin >> x >> y >> z;
+            base_point = Point3(x, y, z);
 
-            cin>>a>>b>>c;
-            temp = new GeneralQuadratic(coeff, reff, a, b, c);
+            cin >> length >> width >> height;
+            obj = new GeneralQuadratic(coeff, base_point, length, width, height);
 
-            cin>>a>>b>>c;
-            temp->setColor(a, b, c);
+            cin >> red >> green >> blue;
+            obj->setColor(red, green, blue);
 
-            cin>>a>>b>>c>>radius;
-            temp->setCoEfficients(a, b, c, radius);
+            cin >> ambient >> diffuse >> specular >> reflection;
+            obj->set_lighting_coefficients(ambient, diffuse, specular, reflection);
 
-            cin>>a;
-            temp->setShine(a);
+            cin >> shine;
+            obj->setShine(shine);
 
-            objects.push_back(temp);
-
+            objects.push_back(obj);
         }
-
     }
 
-    cin>>numOfObjects; // numOfLights ???
-    for (int i=0; i<numOfObjects; i++) {
-        cin>>a>>b>>c;
+    cin >> n_lights;
+    for (int i = 0; i < n_lights; i++) {
+        double x, y, z;
+        cin >> x >> y >> z;
 
-        Point3 light(a, b, c);
+        Point3 light(x, y, z);
         lights.push_back(light);
     }
 
-
-    temp = new Floor(1000, 20);
-    temp->setCoEfficients(0.4,0.2,0.2,0.2);
-    temp->setShine(1.0);
-    objects.push_back(temp);
+    obj = new Floor(1000, 20);
+    obj->set_lighting_coefficients(0.4, 0.2, 0.2, 0.2);
+    obj->setShine(1.0);
+    objects.push_back(obj);
 
 
 }
@@ -220,10 +163,9 @@ void capture() {
     double du = (WINDOW_WIDTH*1.0) / imageWidth;
     double dv = (WINDOW_HEIGHT*1.0) / imageHeight;
 
-    //cout<<du<<','<<dv<<endl;
 
-    for (int i=0; i<imageWidth; i++) {
-        for (int j=0; j<imageHeight; j++) {
+    for (int i = 0; i < imageWidth; i++) {
+        for (int j = 0; j < imageHeight; j++) {
 
             Point3 cornerDir = topLeft + r*i*du - u*j*dv;
 
@@ -257,9 +199,8 @@ void capture() {
 
     image.save_image("output.bmp");
 
-    cout<<"saved\n";
+    cout << "saved\n";
     cout << "\a";
-    // exit(0);
 }
 
 void keyboardListener(unsigned char key, int x, int y)
@@ -418,6 +359,9 @@ void freeMemory() {
 }
 
 int main(int argc, char **argv) {
+
+    //cout << is_outside_range(10, 15, 20);
+    //return 0;
 
     //freopen("out.txt", "w", stdout);
     //loadTestData();

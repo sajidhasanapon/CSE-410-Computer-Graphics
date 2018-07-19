@@ -11,6 +11,11 @@ void clip(double &value, double min_val, double max_val)
     if(value > max_val) value = max_val;
 }
 
+bool is_outside_range(double value, double min_val, double max_val)
+{
+    return (value < min_val) || (value > max_val);
+}
+
 typedef struct{double r, g, b;}Color;
 
 class Point3
@@ -145,7 +150,7 @@ class Object
         this->shine = shine;
     }
 
-    void setCoEfficients(double a, double d, double s, double r)
+    void set_lighting_coefficients(double a, double d, double s, double r)
     {
         co_efficients[AMBIENT] = a;
         co_efficients[DIFFUSE] = d;
@@ -388,7 +393,7 @@ class Floor : public Object
         int pixel_x = (intersectionPoint.x - origin.x) / tile_size;
         int pixel_y = (intersectionPoint.y - origin.y) / tile_size;
 
-        if (pixel_x < 0 || pixel_y < 0 || pixel_x >= n_tiles || pixel_y >= n_tiles)
+        if (is_outside_range(pixel_x, 0, n_tiles) || is_outside_range(pixel_y, 0, n_tiles))
             return -1;
 
         int c = (pixel_x + pixel_y) % 2;
@@ -508,7 +513,7 @@ class GeneralQuadratic : public Object
     double height, width, length;
     double A, B, C, D, E, F, G, H, I, J;
 
-    GeneralQuadratic(double coeff[10], Point3 reff, double length, double width, double height)
+    GeneralQuadratic(double coeff[10], Point3 reference_point, double length, double width, double height)
     {
         this->A = coeff[0];
         this->B = coeff[1];
@@ -520,7 +525,7 @@ class GeneralQuadratic : public Object
         this->H = coeff[7];
         this->I = coeff[8];
         this->J = coeff[9];
-        this->reference_point = reff;
+        this->reference_point = reference_point;
         this->height = height;
         this->width = width;
         this->length = length;
@@ -536,81 +541,64 @@ class GeneralQuadratic : public Object
         double z = 2 * C * intersection.z + E * intersection.y + F * intersection.x + I;
 
         Point3 normal(u, v, z);
-
         return normal.normalize();
     }
 
     double getIntersectionT(Ray &ray)
     {
-
         double a = A * ray.dir.x * ray.dir.x + B * ray.dir.y * ray.dir.y + C * ray.dir.z * ray.dir.z;
         double b = 2 * (A * ray.start.x * ray.dir.x + B * ray.start.y * ray.dir.y + C * ray.start.z * ray.dir.z);
         double c = A * ray.start.x * ray.start.x + B * ray.start.y * ray.start.y + C * ray.start.z * ray.start.z;
 
-        a += D * ray.dir.x * ray.dir.y + E * ray.dir.y * ray.dir.z + F * ray.dir.z * ray.dir.x;
-        b += D * (ray.start.x * ray.dir.y + ray.dir.x * ray.start.y) + E * (ray.start.y * ray.dir.z + ray.dir.y * ray.start.z) + F * (ray.start.z * ray.dir.x + ray.dir.z * ray.start.x);
-        c += D * ray.start.x * ray.start.y + E * ray.start.y * ray.start.z + F * ray.start.z * ray.start.x;
+        a += (D * ray.dir.x * ray.dir.y + E * ray.dir.y * ray.dir.z + F * ray.dir.z * ray.dir.x);
+        b += (D * (ray.start.x * ray.dir.y + ray.dir.x * ray.start.y) + E * (ray.start.y * ray.dir.z + ray.dir.y * ray.start.z) + F * (ray.start.z * ray.dir.x + ray.dir.z * ray.start.x));
+        c += (D * ray.start.x * ray.start.y + E * ray.start.y * ray.start.z + F * ray.start.z * ray.start.x);
 
-        b += G * ray.dir.x + H * ray.dir.y + I * ray.dir.z;
-        c += G * ray.start.x + H * ray.start.y + I * ray.start.z + J;
+        b += (G * ray.dir.x + H * ray.dir.y + I * ray.dir.z);
+        c += (G * ray.start.x + H * ray.start.y + I * ray.start.z + J);
 
-        double d = b * b - 4 * a * c;
+        double discriminant = b * b - 4 * a * c;
 
-        if (d < 0)
+        if (discriminant < 0)
         {
             return -1;
         }
 
-        double t1 = (-b + sqrt(d)) / (2.0 * a);
-        double t2 = (-b - sqrt(d)) / (2.0 * a);
+        double t1 = (-b + sqrt(discriminant)) / (2.0 * a);
+        double t2 = (-b - sqrt(discriminant)) / (2.0 * a);
 
         Point3 intersectionPoint1 = ray.start + ray.dir * t1;
         Point3 intersectionPoint2 = ray.start + ray.dir * t2;
 
-        double xMin = reference_point.x;
-        double xMax = xMin + length;
+        double x_min = reference_point.x;
+        double x_max = x_min + length;
 
-        double yMin = reference_point.y;
-        double yMax = yMin + width;
+        double y_min = reference_point.y;
+        double y_max = y_min + width;
 
-        double zMin = reference_point.z;
-        double zMax = zMin + height;
+        double z_min = reference_point.z;
+        double z_max = z_min + height;
 
-        //cout<<xMin<<','<<xMax<<';'<<yMin<<','<<yMax<<';'<<zMin<<','<<zMax<<endl;
-        //cout<<intersectionPoint1<<intersectionPoint2;
+        double x1 = intersectionPoint1.x;
+        double y1 = intersectionPoint1.y;
+        double z1 = intersectionPoint1.z;
 
-        bool flag1 = (length > 0 && (xMin > intersectionPoint1.x || intersectionPoint1.x > xMax) ||
-                      width > 0 && (yMin > intersectionPoint1.y || intersectionPoint1.y > yMax) ||
-                      height > 0 && (zMin > intersectionPoint1.z || intersectionPoint1.z > zMax));
+        double x2 = intersectionPoint2.x;
+        double y2 = intersectionPoint2.y;
+        double z2 = intersectionPoint2.z;
 
-        bool flag2 = (length > 0 && (xMin > intersectionPoint2.x || intersectionPoint2.x > xMax) ||
-                      width > 0 && (yMin > intersectionPoint2.y || intersectionPoint2.y > yMax) ||
-                      height > 0 && (zMin > intersectionPoint2.z || intersectionPoint2.z > zMax));
+        bool flag1 =    length > 0 && is_outside_range(x1, x_min, x_max) || 
+                        width > 0 && is_outside_range(y1, y_min, y_max) ||
+                        height > 0 && is_outside_range(z1, z_min, z_max);
 
-        //cout<<flag1<<','<<flag2<<endl;
+        bool flag2 =    length > 0 && is_outside_range(x2, x_min, x_max) || 
+                        width > 0 && is_outside_range(y2, y_min, y_max) ||
+                        height > 0 && is_outside_range(z2, z_min, z_max);
 
-        if (flag1 && flag2)
-        {
-            return -1;
-        }
-        else if (flag1)
-        {
-            return t2;
-        }
-        else if (flag2)
-        {
-            return t1;
-        }
-        else
-        {
-            if (t2 > t1)
-            {
-                double temp = t1;
-                t1 = t2;
-                t2 = temp;
-            }
-            return t2;
-        }
+        if (flag1 && flag2) return -1;
+        else if (flag1) return t2;
+        else if (flag2) return t1;
+        else return min(t1, t2);
     }
 };
 
