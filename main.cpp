@@ -196,7 +196,7 @@ void loadActualData() {
 
 
     temp = new Floor(1000, 20);
-    temp->setCoEfficients(0.2,0.4,0.2,0.2);
+    temp->setCoEfficients(0.4,0.2,0.2,0.2);
     temp->setShine(1.0);
     objects.push_back(temp);
 

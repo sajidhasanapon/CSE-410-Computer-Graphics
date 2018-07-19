@@ -192,12 +192,6 @@ int get_nearest(Ray *ray)
 
 double Object::intersect(Ray *ray, double current_color[3], int level)
 {
-    // for (int k = 0; k < 3; k++)
-    // {
-    //         current_color[k] = color[k];
-    // }
-    // return 0;
-
     double t = getIntersectionT(ray, false);
     Point3 intersectionPoint = ray->start + ray->dir * t;
     Point3 normal = getNormal(intersectionPoint);
@@ -221,6 +215,13 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
         Point3 start = intersectionPoint + dir * EPSILON;
         Ray L(start, dir);
 
+        //Point3 E = (intersectionPoint).normalize();
+        //Point3 R = (get_reflected_ray_direction(&L, normal)*-1.0).normalize();
+
+
+        Point3 R = (normal * (dot(L.dir, normal) * 2.0) - L.dir).normalize();
+        Point3 V = (intersectionPoint*-1.0).normalize();
+
         bool flag = false;
 
         for (int j = 0; j < objects.size(); j++)
@@ -237,12 +238,16 @@ double Object::intersect(Ray *ray, double current_color[3], int level)
         if (!flag)
         {
             lambert = source_factor * co_efficients[DIFFUSE] * max(dot(L.dir, normal), 0.0);
-            phong = max(pow(dot(reflection, ray->dir), shine), 0.0);
+            phong = co_efficients[SPECULAR] * max(pow(dot(R, V), shine), 0.0);
+
+            lambert = min(lambert, 1.0);
+            phong = min(phong, 1.0);
+
 
             for (int k = 0; k < 3; k++)
             {
                 current_color[k] += (lambert * color[k]);
-                current_color[k] += (source_factor * phong * co_efficients[SPECULAR] * color[k]);
+                current_color[k] += (phong * color[k]);
             }
         }
 
