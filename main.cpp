@@ -236,7 +236,7 @@ void capture() {
 
             if(nearest!=-1) {
                 //double t = objects[nearest]->intersect(&ray, dummy_color, 1);
-                objects[nearest]->fill_color(&ray, t_min, dummy_color, 1);
+                objects[nearest]->fill_color(ray, t_min, dummy_color, 1);
             }
             frameBuffer[i][j].r = dummy_color[0];
             frameBuffer[i][j].g = dummy_color[1];

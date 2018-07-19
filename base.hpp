@@ -131,7 +131,7 @@ class Object
     virtual double getIntersectionT(Ray &ray) = 0;
     virtual Point3 getNormal(Point3 intersection) = 0;
 
-    void fill_color(Ray *ray, double t, double current_color[3], int level);
+    void fill_color(Ray &ray, double t, double current_color[3], int level);
 
     void setColor(double r, double g, double b)
     {
@@ -153,21 +153,21 @@ class Object
         co_efficients[REFLECTION] = r;
     }
 
-    Point3 get_reflected_ray_direction(Ray *ray, Point3 normal)
+    Point3 get_reflected_ray_direction(Ray &ray, Point3 normal)
     {
-        Point3 out_dir = ray->dir - normal * 2.0 * dot(ray->dir, normal);
+        Point3 out_dir = ray.dir - normal * 2.0 * dot(ray.dir, normal);
         return out_dir.normalize();
     }
 
-    Point3 getRefraction(Ray *ray, Point3 normal)
+    Point3 getRefraction(Ray &ray, Point3 normal)
     {
-        double n_dot_i = dot(normal, ray->dir);
+        double n_dot_i = dot(normal, ray.dir);
         double k = 1.0 - refIdx * refIdx * (1.0 - n_dot_i * n_dot_i);
 
         if (k < 0.0)
             return Point3(0.0, 0.0, 0.0);
 
-        Point3 out_dir = ray->dir * refIdx - normal * (refIdx * n_dot_i + sqrt(k));
+        Point3 out_dir = ray.dir * refIdx - normal * (refIdx * n_dot_i + sqrt(k));
         return out_dir.normalize();
     }
 };
@@ -198,9 +198,9 @@ pair<double, double> get_nearest(Ray &ray)
     return make_pair(nearest, t_min);
 }
 
-void Object::fill_color(Ray *ray, double t, double current_color[3], int level)
+void Object::fill_color(Ray &ray, double t, double current_color[3], int level)
 {
-    Point3 intersectionPoint = ray->start + ray->dir * t;
+    Point3 intersectionPoint = ray.start + ray.dir * t;
     Point3 normal = getNormal(intersectionPoint);
     Point3 reflection = get_reflected_ray_direction(ray, normal);
     Point3 refraction = getRefraction(ray, normal);
@@ -250,13 +250,13 @@ void Object::fill_color(Ray *ray, double t, double current_color[3], int level)
             Ray reflectionRay(start, reflection);
             double reflected_color[3] = {0.0, 0.0, 0.0};
 
-            pair<double, double> pair = get_nearest(&reflectionRay);
+            pair<double, double> pair = get_nearest(reflectionRay);
             int nearest = pair.first;
             double t_min = pair.second;
 
             if (nearest != -1)
             {
-                objects[nearest]->fill_color(&reflectionRay, t_min, reflected_color, level + 1);
+                objects[nearest]->fill_color(reflectionRay, t_min, reflected_color, level + 1);
 
                 for (int k = 0; k < 3; k++)
                 {
@@ -269,13 +269,13 @@ void Object::fill_color(Ray *ray, double t, double current_color[3], int level)
             Ray refractionRay(start, refraction);
             double refracted_color[3] = {0.0, 0.0, 0.0};
 
-            pair = get_nearest(&refractionRay);
+            pair = get_nearest(refractionRay);
             nearest = pair.first;
             t_min = pair.second;
 
             if (nearest != -1)
             {
-                objects[nearest]->fill_color(&refractionRay, t_min, refracted_color, level + 1);
+                objects[nearest]->fill_color(refractionRay, t_min, refracted_color, level + 1);
 
                 for (int k = 0; k < 3; k++)
                 {
@@ -316,8 +316,8 @@ class Sphere : public Object
     {
 
         Point3 c = center;
-        Point3 o = ray->start;
-        Point3 l = ray->dir;
+        Point3 o = ray.start;
+        Point3 l = ray.dir;
 
         Point3 d = o - c;
         double discriminant = dot(l, d) * dot(l, d) - dot(d, d) + radius * radius;
@@ -379,11 +379,11 @@ class Floor : public Object
     double getIntersectionT(Ray &ray)
     {
 
-        if (ray->dir.z == 0)
+        if (ray.dir.z == 0)
             return -1;
 
-        double t = -(ray->start.z / ray->dir.z);
-        Point3 intersectionPoint = ray->start + ray->dir * t;
+        double t = -(ray.start.z / ray.dir.z);
+        Point3 intersectionPoint = ray.start + ray.dir * t;
 
         int pixel_x = (intersectionPoint.x - origin.x) / tile_size;
         int pixel_y = (intersectionPoint.y - origin.y) / tile_size;
@@ -448,19 +448,19 @@ class Triangle : public Object
 
         double t;
         bool flag = false;
-        double denom = dot(normal, ray->dir);
+        double denom = dot(normal, ray.dir);
 
         if (denom < 0.0)
         {
             normal = normal * -1.0;
-            denom = dot(normal, ray->dir);
+            denom = dot(normal, ray.dir);
         }
 
         // checking whether the ray intersects with the triangle's plane
         if (abs(denom) < EPSILON)
             return -1;
 
-        t = (dot(normal, p1 - ray->start)) / denom;
+        t = (dot(normal, p1 - ray.start)) / denom;
         if (t >= 0)
             flag = true; // yes, intersects the plane
 
@@ -469,7 +469,7 @@ class Triangle : public Object
 
         // checking whether the point of intersection is inside the triangle
         bool b1, b2, b3;
-        Point3 intersectionPoint = ray->start + ray->dir * t;
+        Point3 intersectionPoint = ray.start + ray.dir * t;
 
         Point3 N = cross(p2 - p1, p3 - p1);
         double area2 = N.length();
@@ -543,16 +543,16 @@ class GeneralQuadratic : public Object
     double getIntersectionT(Ray &ray)
     {
 
-        double a = A * ray->dir.x * ray->dir.x + B * ray->dir.y * ray->dir.y + C * ray->dir.z * ray->dir.z;
-        double b = 2 * (A * ray->start.x * ray->dir.x + B * ray->start.y * ray->dir.y + C * ray->start.z * ray->dir.z);
-        double c = A * ray->start.x * ray->start.x + B * ray->start.y * ray->start.y + C * ray->start.z * ray->start.z;
+        double a = A * ray.dir.x * ray.dir.x + B * ray.dir.y * ray.dir.y + C * ray.dir.z * ray.dir.z;
+        double b = 2 * (A * ray.start.x * ray.dir.x + B * ray.start.y * ray.dir.y + C * ray.start.z * ray.dir.z);
+        double c = A * ray.start.x * ray.start.x + B * ray.start.y * ray.start.y + C * ray.start.z * ray.start.z;
 
-        a += D * ray->dir.x * ray->dir.y + E * ray->dir.y * ray->dir.z + F * ray->dir.z * ray->dir.x;
-        b += D * (ray->start.x * ray->dir.y + ray->dir.x * ray->start.y) + E * (ray->start.y * ray->dir.z + ray->dir.y * ray->start.z) + F * (ray->start.z * ray->dir.x + ray->dir.z * ray->start.x);
-        c += D * ray->start.x * ray->start.y + E * ray->start.y * ray->start.z + F * ray->start.z * ray->start.x;
+        a += D * ray.dir.x * ray.dir.y + E * ray.dir.y * ray.dir.z + F * ray.dir.z * ray.dir.x;
+        b += D * (ray.start.x * ray.dir.y + ray.dir.x * ray.start.y) + E * (ray.start.y * ray.dir.z + ray.dir.y * ray.start.z) + F * (ray.start.z * ray.dir.x + ray.dir.z * ray.start.x);
+        c += D * ray.start.x * ray.start.y + E * ray.start.y * ray.start.z + F * ray.start.z * ray.start.x;
 
-        b += G * ray->dir.x + H * ray->dir.y + I * ray->dir.z;
-        c += G * ray->start.x + H * ray->start.y + I * ray->start.z + J;
+        b += G * ray.dir.x + H * ray.dir.y + I * ray.dir.z;
+        c += G * ray.start.x + H * ray.start.y + I * ray.start.z + J;
 
         double d = b * b - 4 * a * c;
 
@@ -564,8 +564,8 @@ class GeneralQuadratic : public Object
         double t1 = (-b + sqrt(d)) / (2.0 * a);
         double t2 = (-b - sqrt(d)) / (2.0 * a);
 
-        Point3 intersectionPoint1 = ray->start + ray->dir * t1;
-        Point3 intersectionPoint2 = ray->start + ray->dir * t2;
+        Point3 intersectionPoint1 = ray.start + ray.dir * t1;
+        Point3 intersectionPoint2 = ray.start + ray.dir * t2;
 
         double xMin = reference_point.x;
         double xMax = xMin + length;
