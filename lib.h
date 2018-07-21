@@ -3,33 +3,27 @@
 
 #define EPSILON 0.000001
 
+#define AMBIENT 0 
+#define DIFFUSE 1 
+#define SPECULAR 2
+#define REFLECTION 3
+
 extern int recursion_level;
 
 void drawAxes() {
-    glColor3f(1, 1, 1);
     glBegin(GL_LINES);
     {
+        glColor3f(0.0, 0.0, 1.0);
         glVertex3f( 100,0,0);
         glVertex3f(-100,0,0);
 
+        glColor3f(0.0, 1.0, 0.0);
         glVertex3f(0,-100,0);
         glVertex3f(0, 100,0);
 
+        glColor3f(1.0, 0.0, 0.0);
         glVertex3f(0,0, 100);
         glVertex3f(0,0,-100);
-    }
-    glEnd();
-}
-
-
-void drawSquare(double a) {
-    //glColor3f(1.0,0.0,0.0);
-    glBegin(GL_QUADS);
-    {
-        glVertex3f( a, a,0);
-        glVertex3f( a,-a,0);
-        glVertex3f(-a,-a,0);
-        glVertex3f(-a, a,0);
     }
     glEnd();
 }
@@ -145,7 +139,7 @@ class Point3
 
     void print()
     {
-        cout << x << "," << y << "," << z << endl;
+        cout << x << ", " << y << ", " << z << endl;
     }
 };
 
@@ -161,14 +155,6 @@ class Ray
         this->start = start;
         this->dir = dir.normalize();
     }
-};
-
-enum
-{
-    AMBIENT,
-    DIFFUSE,
-    SPECULAR,
-    REFLECTION
 };
 
 class Object
@@ -411,7 +397,7 @@ class Floor : public Object
         this->origin = Point3(-floorWidth / 2.0, -floorWidth / 2.0, 0.0);
         this->n_tiles = floorWidth / tile_size;
 
-        texture = bitmap_image("sid.bmp");
+        texture = bitmap_image("kanna_tiled.bmp");
     }
 
     void draw()
@@ -461,9 +447,12 @@ class Floor : public Object
         j = (texture.height()-1.0)/1000.0 * y;
         texture.get_pixel(i, texture.height()-j-1, r, g, b);
 
-        color[0] = double(c)*0.5 + (double(r) / 255.0) * 0.5;
-        color[1] = double(c)*0.5 + (double(g) / 255.0) * 0.5;
-        color[2] = double(c)*0.5 + (double(b) / 255.0) * 0.5;
+        double tile_portion = 0.7;
+        double texture_portion = 1.0 - tile_portion;
+
+        color[0] = double(c)*tile_portion + (double(r) / 255.0)*texture_portion;
+        color[1] = double(c)*tile_portion + (double(g) / 255.0)*texture_portion;
+        color[2] = double(c)*tile_portion + (double(b) / 255.0)*texture_portion;
 
         return t;
     }
