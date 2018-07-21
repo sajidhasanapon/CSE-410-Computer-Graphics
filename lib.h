@@ -261,10 +261,10 @@ void Object::fill_color(Ray &ray, double t, double current_color[3], int level)
     Point3 reflection = get_reflected_ray_direction(ray, normal);
     Point3 refraction = getRefraction(ray, normal);
 
-    double ambient = co_efficients[AMBIENT], lambert = 0.0, phong = 0.0;
-
     for (int i = 0; i < lights.size(); i++)
     {
+        double ambient = co_efficients[AMBIENT], lambert = 0.0, phong = 0.0;
+        
         Point3 dir = (lights[i] - intersectionPoint).normalize();
 
         Point3 start = intersectionPoint + dir * EPSILON;
@@ -402,6 +402,7 @@ class Floor : public Object
     Point3 origin;
     double floorWidth, tile_size;
     int n_tiles;
+    bitmap_image texture;
 
     Floor(double floorWidth, double tile_size)
     {
@@ -409,6 +410,8 @@ class Floor : public Object
         this->tile_size = tile_size;
         this->origin = Point3(-floorWidth / 2.0, -floorWidth / 2.0, 0.0);
         this->n_tiles = floorWidth / tile_size;
+
+        texture = bitmap_image("sid.bmp");
     }
 
     void draw()
@@ -434,21 +437,33 @@ class Floor : public Object
 
     double getIntersectionT(Ray &ray)
     {
-
         if (ray.dir.z == 0)
             return -1;
 
         double t = -(ray.start.z / ray.dir.z);
         Point3 intersectionPoint = ray.start + ray.dir * t;
 
+        double x = intersectionPoint.x - origin.x;
+        double y = intersectionPoint.y - origin.y;
+        if(is_outside_range(x, 0.0, floorWidth) || is_outside_range(y, 0.0, floorWidth))
+            return -1;
+
         int pixel_x = (intersectionPoint.x - origin.x) / tile_size;
         int pixel_y = (intersectionPoint.y - origin.y) / tile_size;
-
         if (is_outside_range(pixel_x, 0, n_tiles) || is_outside_range(pixel_y, 0, n_tiles))
             return -1;
 
         int c = (pixel_x + pixel_y) % 2;
-        color[0] = color[1] = color[2] = c;
+        
+        unsigned char r, g, b;
+        int i, j;
+        i = texture.width()/1000.0 * x;
+        j = texture.height()/1000.0 * y;
+        texture.get_pixel(i, texture.height()-j, r, g, b);
+
+        color[0] = double(c)*0.5 + (double(r) / 255.0) * 0.5;
+        color[1] = double(c)*0.5 + (double(g) / 255.0) * 0.5;
+        color[2] = double(c)*0.5 + (double(b) / 255.0) * 0.5;
 
         return t;
     }

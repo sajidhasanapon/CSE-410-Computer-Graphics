@@ -141,7 +141,7 @@ void loadActualData() {
     }
 
     obj = new Floor(1000, 20);
-    obj->set_lighting_coefficients(0.4, 0.2, 0.2, 0.2);
+    obj->set_lighting_coefficients(0.3, 0.3, 0.3, 0.1);
     obj->setShine(1.0);
     objects.push_back(obj);
 
