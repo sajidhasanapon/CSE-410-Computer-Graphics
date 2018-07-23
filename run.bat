@@ -1,0 +1,1 @@
+g++ -o main.exe main.cpp -I include -L lib -lglu32 -lopengl32 -lglut32 && main.exe
