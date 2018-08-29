@@ -104,64 +104,64 @@ public:
     }
 };
 
-int map_y_to_grid_row(double y)
+
+int get_row_index_from_scanline_y(double y)
 {
-    double r = (y - y_bottom_limit) / dy + 0.5;
+    double r = (y - y_bottom_limit) / dy - 0.5;
     return int(r);
 }
 
-double map_row_to_y(int r)
+double get_scanline_y_from_row_index(int r)
 {
-    return double(r)*dy + y_bottom_limit;
+    return double(r)*dy + y_bottom_limit + dy/2.0;
 }
 
-int map_x_to_grid_col(double x)
+int get_column_index_from_scanline_x(double x)
 {
-    double c = (x - x_left_limit) / dx + 0.5;
+    double c = (x - x_left_limit) / dx - 0.5;
     return int(c);
 }
 
-double map_col_to_x(int c)
+double get_scanline_x_from_column_index(int c)
 {
-    return double(c)*dx + x_left_limit;
+    return double(c)*dx + x_left_limit + dx/2.0;
 }
 
-pair<double, double> get_intersetion_x(Triangle tr, double y)
+
+void get_intersetion_x(Triangle tr, double y, double& x_left, double& x_right)
 {
-    double x1 = tr.p1.x;
-    double y1 = tr.p1.y;
+    // clumsy code, but crazy fast!
+    // returning early speeds things up.
 
-    double x2 = tr.p2.x;
-    double y2 = tr.p2.y;
+    double x1 = tr.p1.x;    double y1 = tr.p1.y;
+    double x2 = tr.p2.x;    double y2 = tr.p2.y;
+    double x3 = tr.p3.x;    double y3 = tr.p3.y;
 
-    double x3 = tr.p3.x;
-    double y3 = tr.p3.y;
+    if(y == y1 && y == y2) {x_left = min(x1, x2); x_right = max(x1, x2); return;}
+    if(y == y1 && y == y3) {x_left = min(x1, x3); x_right = max(x1, x3); return;}
+    if(y == y2 && y == y3) {x_left = min(x2, x3); x_right = max(x2, x3); return;}
 
-    double res_x1, res_x2;
-
-    if(y == y1 && y == y2) return make_pair(min(x1, x2), max(x1, x2));
-    if(y == y1 && y == y3) return make_pair(min(x1, x3), max(x1, x3));
-    if(y == y2 && y == y3) return make_pair(min(x2, x3), max(x2, x3));
-
-    if( (y2 - y) * (y3 - y) >= 0) // p2 and p3 on the same side
+    if( (y2 - y) * (y3 - y) >= 0) // p2 and p3 on the same side of scanline y
     {
-        res_x1 = (x1-x2)/(y1-y2)*(y-y1) + x1; // p1, p2
-        res_x2 = (x1-x3)/(y1-y3)*(y-y1) + x1; // p1, p3
-        return make_pair(min(res_x1, res_x2), max(res_x1, res_x2));
+        double temp_x1 = (x1-x2)/(y1-y2)*(y-y1) + x1; // intersection of p1 and p2
+        double temp_x2 = (x1-x3)/(y1-y3)*(y-y1) + x1; // intersection of p1 and p3
+        x_left = min(temp_x1, temp_x2);     x_right = max(temp_x1, temp_x2);
+        return;
     }
-    if( (y1 - y) * (y3 - y) >= 0) // p1 and p3 on the same side
+    if( (y1 - y) * (y3 - y) >= 0) // p1 and p3 on the same side of scanline y
     {
-        res_x1 = (x1-x2)/(y1-y2)*(y-y1) + x1; // p2, p1
-        res_x2 = (x2-x3)/(y2-y3)*(y-y2) + x2; // p2, p3
-        return make_pair(min(res_x1, res_x2), max(res_x1, res_x2));
+        double temp_x1 = (x1-x2)/(y1-y2)*(y-y1) + x1; // intersection of p2 and p1
+        double temp_x2 = (x2-x3)/(y2-y3)*(y-y2) + x2; // intersection of p2 and p3
+        x_left = min(temp_x1, temp_x2);     x_right = max(temp_x1, temp_x2);
+        return;
     }
-    if( (y1 - y) * (y2 - y) >= 0) // p1 and p2 on the same side
+    if( (y1 - y) * (y2 - y) >= 0) // p1 and p2 on the same side of scanline y
     {
-        res_x1 = (x1-x3)/(y1-y3)*(y-y1) + x1; // p3, p1
-        res_x2 = (x2-x3)/(y2-y3)*(y-y2) + x2; // p3, p2
-        return make_pair(min(res_x1, res_x2), max(res_x1, res_x2));
+        double temp_x1 = (x1-x3)/(y1-y3)*(y-y1) + x1; // intersection of p3 and p1
+        double temp_x2 = (x2-x3)/(y2-y3)*(y-y2) + x2; // intersection of p3 and p2
+        x_left = min(temp_x1, temp_x2);     x_right = max(temp_x1, temp_x2);
+        return;
     }
-        
 }
 
 int main(){
@@ -237,32 +237,29 @@ int main(){
         Triangle tr = triangles[t];
 
         double tr_max_y = max(max(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
-        int r_up = map_y_to_grid_row(tr_max_y);
-        int upper_scanline_row = min(r_up, int(screen_height));
-        double upper_scanline = map_row_to_y(upper_scanline_row);
+        double max_y = min(tr_max_y, y_top_limit);
+        int upper_scanline_row = get_row_index_from_scanline_y(max_y);
+        double upper_scanline = get_scanline_y_from_row_index(upper_scanline_row);
 
-        double tr_min_y = min(min(tr.p1.y, tr.p2.y), tr.p3.y); // max_y of triangle
-        int r_down = map_y_to_grid_row(tr_min_y);
-        int lower_scanline_row = max(r_down, 0);
-        double lower_scanline = map_row_to_y(lower_scanline_row);
+        double tr_min_y = min(min(tr.p1.y, tr.p2.y), tr.p3.y); // min_y of triangle
+        double min_y = max(tr_min_y, y_bottom_limit);
+        int lower_scanline_row = get_row_index_from_scanline_y(min_y);
+        double lower_scanline = get_scanline_y_from_row_index(lower_scanline_row);
 
         int c, r;
         double x, y;
-        for(r = lower_scanline_row, y = lower_scanline + dy / 2.0; y <= upper_scanline; r++, y += dy)  
+        for(r = lower_scanline_row, y = lower_scanline; r <= upper_scanline_row; r++, y += dy)  
         {
-            pair<double, double> intersection_x = get_intersetion_x(tr, y);
-            double x1 = intersection_x.first;
-            double x2 = intersection_x.second;
+            double x_left, x_right;
+            get_intersetion_x(tr, y, x_left, x_right); // call by reference, values returned in x_left and x_right
 
-            int c_left = map_x_to_grid_col(x1);
-            int left_scanline_col = max(c_left, 0);
-            double left_scanline = map_col_to_x(left_scanline_col);
+            int left_scanline_col = get_column_index_from_scanline_x(max(x_left, x_left_limit));
+            double left_scanline = get_scanline_x_from_column_index(left_scanline_col);
 
-            int c_right = map_x_to_grid_col(x2);
-            int right_scanline_col = min(c_right, int(screen_width));
-            double right_scanline = map_col_to_x(right_scanline_col);
+            int right_scanline_col = get_column_index_from_scanline_x(min(x_right, x_right_limit));
+            double right_scanline = get_scanline_x_from_column_index(right_scanline_col);
 
-            for(c = left_scanline_col, x = left_scanline + dx / 2.0; x <= right_scanline; c++, x += dx)
+            for(c = left_scanline_col, x = left_scanline; c <= right_scanline_col; c++, x += dx)
             {
                 double z = (tr.d - tr.a*x - tr.b*y ) / tr.c;
                 if(z < z_buffer[c][r].z)
@@ -288,7 +285,7 @@ int main(){
     for(int i=0; i<sw; i++){
         for(int j=0; j<sh; j++)
         {
-            image.set_pixel(i, sh-j-1, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b);   
+            image.set_pixel(i, sh-j-1, z_buffer[i][j].color.r, z_buffer[i][j].color.g, z_buffer[i][j].color.b); // the bitmap library assumes the origin at the top-left corner, not the bottom-left; hence it is necesary to "flip the image"; that's why "j" is mapped to "sh-j-1" 
         }
     }
     image.save_image("1.bmp");
@@ -303,7 +300,7 @@ int main(){
     for(int i=0; i<sh; i++){
         for(int j=0; j<sw; j++)
         {
-            int a = sw-i-1;
+            int a = sw-i-1; // i don't know why it works. but it does
             int b = j;
             if (z_buffer[b][a].z < z_rear_limit)
                 zbfr << fixed << setprecision(6) << z_buffer[b][a].z << "\t";
